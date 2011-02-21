@@ -1,0 +1,3 @@
+
+( nohup python pso.py > results ) > & err &
+
