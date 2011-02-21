@@ -1,0 +1,14 @@
+diff --git a/milkyway/include/real.h b/milkyway/include/real.h
+index 497b65c..b43a2b1 100644
+--- a/milkyway/include/real.h
++++ b/milkyway/include/real.h
+@@ -52,7 +52,8 @@
+     #include <fdlibm.h>
+   #else
+     #if HAVE_TGMATH_H
+-      #include <tgmath.h>
++    //#include <tgmath.h>
++      #include <math.h>
+     #else
+       #include <math.h>
+     #endif

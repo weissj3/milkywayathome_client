@@ -1,0 +1,17 @@
+diff --git a/milkyway/include/real.h b/milkyway/include/real.h
+index 0bb1efa..242629a 100644
+--- a/milkyway/include/real.h
++++ b/milkyway/include/real.h
+@@ -48,10 +48,11 @@
+      casting everywhere
+    */
+   #ifndef _MSC_VER
+-    #include <tgmath.h>
++//    #include <tgmath.h>
+   #else
+     #include <math.h>
+   #endif
++    #include <math.h>
+ 
+   #if ENABLE_CRLIBM
+     #include <crlibm.h>
