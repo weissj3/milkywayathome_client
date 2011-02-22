@@ -7,8 +7,8 @@
         "accuracy-parameter" : 1.0,
         "seed" : 0,
 
-        "time-orbit" : 4,
-        "time-evolve" : 3.945,
+        "time-orbit" : 6,
+        "time-evolve" : 5.945,
 
         "potential" : {
             "disk" : {
@@ -53,7 +53,7 @@
             {
                 "type" : "plummer",
                 "mass" : 5000,
-                "nbody" : 1024,
+                "nbody" : 10000,
                 "scale-radius" : 0.9,
 
                 "reverse-orbit" : true,
