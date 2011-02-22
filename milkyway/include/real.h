@@ -58,8 +58,8 @@
   #if ENABLE_FDLIBM
     #include <fdlibm.h>
   #else
-    #if HAVE_TGMATH_H
-      //#include <tgmath.h>
+    #if HAVE_TGMATH_H && !HAVE_BROKEN_TGMATH
+      #include <tgmath.h>
     #else
       #include <math.h>
     #endif
