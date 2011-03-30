@@ -490,7 +490,7 @@ static CALresult createOutputBuffer2D(MWMemRes* mr, MWCALInfo* ci, CALuint width
     return CAL_RESULT_OK;
 }
 
-static CALresult createOutMuBuffer(MWCALInfo* ci,
+static CALresult createOutBgBuffer(MWCALInfo* ci,
                                    SeparationCALMem* cm,
                                    const CALSeparationSizes* sizes)
 {
@@ -687,7 +687,7 @@ static CALresult createSeparationBuffers(MWCALInfo* ci,
 
     cm->numberStreams = ap->number_streams;
 
-    err |= createOutMuBuffer(ci, cm, sizes);
+    err |= createOutBgBuffer(ci, cm, sizes);
     err |= createOutStreamBuffers(ci, cm, sizes);
 
     err |= createRBuffers(ci, cm, ap, ia, sg, sizes);
@@ -876,9 +876,6 @@ static void destroyModuleNames(SeparationCALNames* cn)
 {
     free(cn->outStreams);
     cn->outStreams = NULL;
-
-    free(cn->inStreams);
-    cn->inStreams = NULL;
 }
 
 static CALresult getModuleNames(MWCALInfo* ci, SeparationCALNames* cn, CALuint numberStreams)
@@ -888,24 +885,20 @@ static CALresult getModuleNames(MWCALInfo* ci, SeparationCALNames* cn, CALuint n
     char buf[20] = "";
 
     cn->outStreams = mwCalloc(numberStreams, sizeof(CALname));
-    cn->inStreams = mwCalloc(numberStreams, sizeof(CALname));
 
     err |= getNameMWCALInfo(ci, &cn->sg_dx, "cb0");
     err |= getNameMWCALInfo(ci, &cn->nuBuf, "cb1");
 
-    err |= getNameMWCALInfo(ci, &cn->rPts,  "i0");
-    err |= getNameMWCALInfo(ci, &cn->rc,    "i1");
-    err |= getNameMWCALInfo(ci, &cn->lTrig, "i2");
-    err |= getNameMWCALInfo(ci, &cn->bTrig, "i3");
+    err |= getNameMWCALInfo(ci, &cn->rc,    "i0");
+    err |= getNameMWCALInfo(ci, &cn->lTrig, "i1");
+    err |= getNameMWCALInfo(ci, &cn->bTrig, "i2");
 
-    err |= getNameMWCALInfo(ci, &cn->outBg, "o0");
-    err |= getNameMWCALInfo(ci, &cn->inMu, "i4");
+    err |= getNameMWCALInfo(ci, &cn->rPts,  "uav0");
+
+    err |= getNameMWCALInfo(ci, &cn->outBg, "uav1");
     for (i = 0; i < numberStreams; ++i)
     {
-        sprintf(buf, "i%u", i + 5);
-        err |= getNameMWCALInfo(ci, &cn->inStreams[i], buf);
-
-        sprintf(buf, "o%u", i + 1);
+        sprintf(buf, "uav%u", i + 2);
         err |= getNameMWCALInfo(ci, &cn->outStreams[i], buf);
     }
 
@@ -920,14 +913,9 @@ static CALresult setKernelArguments(MWCALInfo* ci, SeparationCALMem* cm, Separat
     CALresult err = CAL_RESULT_OK;
     CALuint i;
 
-    /* CHECKME: Bind the same output buffer to the input OK? */
     err |= calCtxSetMem(ci->calctx, cn->outBg, cm->outBg.mem);
-    err |= calCtxSetMem(ci->calctx, cn->inMu, cm->outBg.mem);
     for (i = 0; i < cm->numberStreams; ++i)
-    {
         err |= calCtxSetMem(ci->calctx, cn->outStreams[i], cm->outStreams[i].mem);
-        err |= calCtxSetMem(ci->calctx, cn->inStreams[i],  cm->outStreams[i].mem);
-    }
 
     err |= calCtxSetMem(ci->calctx, cn->rPts, cm->rPts.mem);
     err |= calCtxSetMem(ci->calctx, cn->rc, cm->rc.mem);
@@ -978,11 +966,11 @@ static CALresult runKernel(MWCALInfo* ci, SeparationCALMem* cm, const CALdomain*
     CALresult err;
     CALevent ev = 0;
 
-#if 1
+#if 0
     err = calCtxRunProgram(&ev, ci->calctx, ci->func, domain);
 #else
     CALdomain3D global = { domain->width, domain->height, 1 };
-    CALdomain3D local = { 64, 28, 1 };
+    CALdomain3D local = { 64, 1, 1 };
     CALprogramGrid grid;
 
     grid.func = ci->func;
@@ -994,7 +982,7 @@ static CALresult runKernel(MWCALInfo* ci, SeparationCALMem* cm, const CALdomain*
     grid.gridSize.height = (global.height + local.height - 1) / local.height;
     grid.gridSize.depth  = (global.depth + local.depth - 1) / local.depth;
 
-    #if 0
+    #if 1
     warn("arst %u %u %u -> { %u %u }\n", grid.gridSize.width, grid.gridSize.height, grid.gridSize.depth,
 
          grid.gridSize.width * local.width,
@@ -1153,10 +1141,7 @@ static real runIntegral(MWCALInfo* ci,
     memset(&cn, 0, sizeof(SeparationCALNames));
     err = getModuleNames(ci, &cn, cm->numberStreams);
     if (err != CAL_RESULT_OK)
-    {
-        cal_warn("Failed to get module names", err);
         return NAN;
-    }
 
     err = setKernelArguments(ci, cm, &cn);
     if (err != CAL_RESULT_OK)

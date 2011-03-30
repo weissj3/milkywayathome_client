@@ -99,46 +99,36 @@ static double2 kahanAdd(double2 kSum, double1 x)
     return tc;
 }
 
-
 /* For reference: ATI application register usage in 1, 2, 3 stream cases: 13, 19, 25 respectively */
-static void createSeparationKernelCore(input2d<double2>& bgInput,
-                                       std::vector< input2d<double2> >& streamInput,
-                                       input2d<double2>& rPts,
-                                       input1d<double2>& rConsts,
-                                       input2d<double2>& lTrigBuf,
-                                       input2d<double1>& bTrigBuf,
+static void createSeparationKernelCore(uav<double2>& bgInput,
+                                       std::vector< uav<double2> >& streamInput,
+                                       const uav<double2>& rPts,
+                                       const input1d<double2>& rConsts,
+                                       const input2d<double2>& lTrigBuf,
+                                       const input2d<double1>& bTrigBuf,
                                        const AstronomyParameters* ap,
                                        const IntegralArea* ia,
                                        const StreamConstants* sc)
 {
     unsigned int j;
-    unsigned int number_streams = 3;  /* FIXME: Temporary to compare against old things */
 
     indexed_register<double1> sg_dx("cb0");
     named_variable<float1> nu_step("cb1[0].x");
     named_variable<double1> nu_id("cb1[0].zw");
-    named_variable<float2> pos("vWinCoord0"); /* .x() = r, .y() = mu */
 
-    named_variable<double2> bgOut("o0");
-    std::vector< named_variable<double2> > streamOutputRegisters;
+    uint1 r_step = get_global_id(0);
+    uint1 mu_step = get_global_id(1);
 
-    std::stringstream regName;
-    for (j = 0; j < number_streams; ++j)
-    {
-        regName.seekp(0);
-        regName << 'o' << (j + 1);
-        streamOutputRegisters.push_back(regName.str());
-    }
 
-    double2 lTrig = lTrigBuf(nu_step, pos.y());
-    double1 bSin = bTrigBuf(nu_step, pos.y());
+    double2 lTrig = lTrigBuf(nu_step, cast_type<float1>(mu_step));
+    double1 bSin = bTrigBuf(nu_step, cast_type<float1>(mu_step));
 
-    float2 i = float2(pos.x(), 0.0);
+    uint2 i = uint2(r_step, 0.0);
 
     /* 0 integrals and get stream constants */
     double1 bg_int = double1(0.0);
     std::vector<double1> streamIntegrals;
-    for (j = 0; j < number_streams; ++j)
+    for (j = 0; j < ap->number_streams; ++j)
         streamIntegrals.push_back(double1(0.0));
 
     /* Counting down seems to save 2 registers, but is slightly slower */
@@ -172,7 +162,7 @@ static void createSeparationKernelCore(input2d<double2>& bgInput,
         #endif
 
         emit_comment("stream loops");
-        for (j = 0; j < number_streams; ++j)
+        for (j = 0; j < ap->number_streams; ++j)
         {
             emit_comment("begin stream");
             double1 xs = x - X(sc[j].c);
@@ -198,40 +188,39 @@ static void createSeparationKernelCore(input2d<double2>& bgInput,
         }
         emit_comment("End streams");
 
-        i.y() = i.y() + 1.0f;
-        il_breakc(i.y() >= float1((float) ap->convolve));
+        i.y() = i.y() + 1;
+        il_breakc(i.y() >= ap->convolve);
     }
     il_endloop
 
-    double1 V_reff_xr_rp3 = nu_id * rConsts(pos.x()).x();
+    double1 V_reff_xr_rp3 = nu_id * rConsts(cast_type<float1>(r_step)).x();
     std::vector<double2> streamRead;
-    double2 bgRead = bgInput[pos];
-    for (j = 0; j < number_streams; ++j)
-        streamRead.push_back(streamInput[j][pos]);
+    double2 bgRead = bgInput(r_step, mu_step);
+    for (j = 0; j < ap->number_streams; ++j)
+        streamRead.push_back(streamInput[j](r_step, mu_step));
 
     /* Put these multiplies together */
     bg_int *= V_reff_xr_rp3;
-    for (j = 0; j < number_streams; ++j)
+    for (j = 0; j < ap->number_streams; ++j)
         streamIntegrals[j] *= V_reff_xr_rp3;
 
 #define KAHAN 0
 
 #if KAHAN
     bgOut = kahanAdd(bgRead, bg_int);
-    for (j = 0; j < number_streams; ++j)
+    for (j = 0; j < ap->number_streams; ++j)
         streamOutputRegisters[j] = kahanAdd(streamRead[j], streamIntegrals[j]);
 #else
     bg_int += bgRead.x();
-    for (j = 0; j < number_streams; ++j)
+    for (j = 0; j < ap->number_streams; ++j)
         streamIntegrals[j] += streamRead[j].x();
 
     emit_comment("Output");
-    bgOut.x() = bg_int;
+    bgInput(r_step, mu_step) = double2(bg_int, bg_int);
 
     emit_comment("Stream output");
-    //for (j = 0; j < ap->number_streams; ++j)
-    for (j = 0; j < number_streams; ++j)
-        streamOutputRegisters[j].x() = streamIntegrals[j];
+    for (j = 0; j < ap->number_streams; ++j)
+        streamInput[j](r_step, mu_step) = double2(streamIntegrals[j], streamIntegrals[j]);
 #endif /* KAHAN */
 
     streamIntegrals.clear();
@@ -255,28 +244,22 @@ std::string createSeparationKernel(const AstronomyParameters* ap,
         return "";
     }
 
-    code << "il_ps_2_0\n";
+    code << "il_cs_2_0\n";
+    code << format("dcl_num_thread_per_group %i\n") % 64;
     code << format("dcl_cb cb0[%u]\n") % numRegSgDx;
     code << "dcl_cb cb1[1]\n";
 
-    code << "dcl_output_usage(generic) o0\n";
-    for (i = 0; i < ap->number_streams; ++i)
-        code << format("dcl_output_usage(generic) o%u\n") % (i + 1);
-
-    code << "dcl_input_position_interp(linear_noperspective) vWinCoord0.xy__\n";
-
     Source::begin(device);
 
-    input2d<double2> rPts(0);
-    input1d<double2> rConsts(1);
-    input2d<double2> lTrig(2);
-    input2d<double1> bTrig(3);
-
-    input2d<double2> bgInput(4);
-    std::vector< input2d<double2> > streamInputs;
+    input1d<double2> rConsts(0);
+    input2d<double2> lTrig(1);
+    input2d<double1> bTrig(2);
+    uav<double2> rPts(0, "2d");
+    uav<double2> bgInput(1, "2d");
+    std::vector< uav<double2> > streamInputs;
 
     for (i = 0; i < ap->number_streams; ++i)
-        streamInputs.push_back(input2d<double2>(5 + i));
+        streamInputs.push_back(uav<double2>(i + 2, "2d"));
 
     createSeparationKernelCore(bgInput, streamInputs, rPts, rConsts, lTrig, bTrig, ap, ia, sc);
 
@@ -284,8 +267,6 @@ std::string createSeparationKernel(const AstronomyParameters* ap,
 
     Source::emitHeader(code);
     Source::emitCode(code);
-
-    code << "end\n";
 
     return code.str();
 }

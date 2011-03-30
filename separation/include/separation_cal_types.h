@@ -53,9 +53,6 @@ typedef struct
     CALname outBg;
     CALname* outStreams;
 
-    CALname inMu;
-    CALname* inStreams;
-
     CALname nuBuf;
     CALname rPts;
     CALname rc;
