@@ -41,7 +41,9 @@ static void sumStreamResults(Kahan* probs_results,
     cl_uint i;
 
     for (i = 0; i < number_streams; ++i)
+    {
         KAHAN_ADD(probs_results[i], probs_V_reff_xr_rp3[i]);
+    }
 }
 
 static void sumProbsResults(real* probs_results,
@@ -80,7 +82,7 @@ static cl_int enqueueIntegralKernel(CLInfo* ci,
 
     err = clEnqueueNDRangeKernel(ci->queue,
                                  ci->kern,
-                                 2,
+                                 3,
                                  offset, global, useDefault ? NULL : local,
                                  0, NULL, NULL);
     if (err != CL_SUCCESS)
@@ -193,7 +195,7 @@ static cl_int runNuStep(CLInfo* ci,
                         const cl_uint nu_step)
 {
     cl_int err;
-    size_t offset[2];
+    size_t offset[3];
     unsigned int i;
 
     err = setNuKernelArgs(ci, ia, nu_step);
@@ -203,10 +205,17 @@ static cl_int runNuStep(CLInfo* ci,
         return err;
     }
 
-    offset[1] = nu_step;
+    offset[0] = 0;
+    offset[1] = 0;
+    offset[2] = nu_step;
+    warn("GLOBAL %zu %zu %zu, chunks = %zu, local = %zu, %zu\n",
+         runSizes->global[0], runSizes->global[1], runSizes->global[2],
+         runSizes->numChunks,
+         runSizes->local[0], runSizes->local[1]);
+
     for (i = 0; i < runSizes->numChunks; ++i)
     {
-        offset[0] = i * runSizes->chunkSize;
+        //offset[0] = i * runSizes->chunkSize;
 
         err = enqueueIntegralKernel(ci, runSizes->letTheDriverDoIt, offset, runSizes->global, runSizes->local);
         if (err != CL_SUCCESS)

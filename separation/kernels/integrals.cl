@@ -178,6 +178,7 @@ inline real aux_prob(__constant AstronomyParameters* ap,
     return qw_r3_N * tmp;
 }
 
+#define K 16
 
 __kernel void mu_sum_kernel(__global real* restrict mu_out,
                             __global real* restrict probs_out,
@@ -195,21 +196,25 @@ __kernel void mu_sum_kernel(__global real* restrict mu_out,
                             __global const RPoints* r_pts,
                           #endif
 
-                            __global const LBTrig* lbts,
+                            __global const LBTrig* lbtsBuf,
                             const unsigned int extra,
                             const real nu_id)
 {
-    size_t nu_step = get_global_id(1);
-    size_t mu_step = (get_global_id(0) - extra) % ia->mu_steps;
-    size_t r_step  = (get_global_id(0) - extra) / ia->mu_steps;
+    size_t r_step  = get_global_id(0);
+    size_t mu_step = K * get_global_id(1);
+    size_t nu_step = get_global_id(2);
 
     if (r_step >= ia->r_steps || mu_step >= ia->mu_steps) /* Avoid out of bounds from roundup */
         return;
 
-    LBTrig lbt = lbts[nu_step * ia->mu_steps + mu_step]; /* 32-byte read */
+    LBTrig lbts[NSTREAM];
+    unsigned int j, k;
 
-    real bg_prob = 0.0;
-    real st_probs[NSTREAM] = { 0.0 };
+    #pragma unroll K
+    for (k = 0; k < K; ++k)
+    {
+        lbts[k] = lbtsBuf[nu_step * ia->mu_steps + mu_step + k];
+    }
 
   #if LOAD_STREAM_CONSTANTS
     StreamConstants sc[NSTREAM];
@@ -219,17 +224,22 @@ __kernel void mu_sum_kernel(__global real* restrict mu_out,
     real m_sun_r0 = ap->m_sun_r0;
     real q_inv_sqr = ap->q_inv_sqr;
     real r0 = ap->r0;
+    real bg_prob = 0.0;
+    real st_probs[NSTREAM] = { 0.0 };
 
-    unsigned int i, j;
+    unsigned int i;
     unsigned int convolve = ap->convolve; /* Faster to load this into register first */
 
     for (i = 0; i < convolve; ++i)
     {
         RPoints r_pt = readRPts(r_pts, ap, (int2) (r_step, i));
 
-        real x = mad(R_POINT(r_pt), LCOS_BCOS(lbt), m_sun_r0);
-        real y = R_POINT(r_pt) * LSIN_BCOS(lbt);
-        real z = R_POINT(r_pt) * BSIN(lbt);
+    #pragma unroll K
+    for (k = 0; k < K; ++k)
+    {
+        real x = mad(R_POINT(r_pt), LCOS_BCOS(lbts[k]), m_sun_r0);
+        real y = R_POINT(r_pt) * LSIN_BCOS(lbts[k]);
+        real z = R_POINT(r_pt) * BSIN(lbts[k]);
 
         /* sqrt(x^2 + y^2 + q_inv_sqr * z^2) */
         real tmp = x * x;
@@ -240,7 +250,7 @@ __kernel void mu_sum_kernel(__global real* restrict mu_out,
         real rs = rg + r0;
 
       #if FAST_H_PROB
-        bg_prob += mw_div(QW_R3_N(r_pt), (rg * cube(rs)));
+        bg_prob += mw_div(QW_R3_N(r_pt), rg * cube(rs));
       #else
         bg_prob += mw_div(qw_r3_N, mw_powr(rg, ap->alpha) * mw_powr(rs, ap->alpha_delta3));
       #endif /* FAST_H_PROB */
@@ -276,12 +286,14 @@ __kernel void mu_sum_kernel(__global real* restrict mu_out,
             st_probs[j] = mw_mad(QW_R3_N(r_pt), tmp, st_probs[j]);
         }
     }
+    }
+
 
     real V_reff_xr_rp3 = nu_id * IRV_REFF_XR_RP3(rcs[r_step]);
-    size_t idx = mu_step * ia->r_steps + r_step; /* Index into output buffers */
 
-    bg_prob *= V_reff_xr_rp3;
-    mu_out[idx] += bg_prob;
+    size_t idx = r_step * ia->mu_steps + mu_step; /* Index into output buffers */
+
+    mu_out[idx] += V_reff_xr_rp3 * bg_prob;
 
     #pragma unroll NSTREAM
     for (j = 0; j < NSTREAM; ++j)

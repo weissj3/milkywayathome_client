@@ -116,7 +116,7 @@ static void calculateIntegrals(const AstronomyParameters* ap,
   #if SEPARATION_OPENCL
     DevInfo di;
     CLInfo ci = EMPTY_CL_INFO;
-    cl_bool useImages = CL_TRUE;
+    cl_bool useImages = CL_FALSE;
   #elif SEPARATION_CAL
     MWCALInfo ci;
   #endif

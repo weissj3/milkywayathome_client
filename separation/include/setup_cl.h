@@ -46,8 +46,8 @@ typedef struct
 
 typedef struct
 {
-    size_t global[2];
-    size_t local[2];
+    size_t global[3];
+    size_t local[3];
     size_t groupSize;
     size_t numChunks;   /* Number of chunks to divide each iteration into */
     cl_uint extra;      /* Extra area added */

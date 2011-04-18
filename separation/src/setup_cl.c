@@ -264,6 +264,8 @@ cl_bool fallbackDriverSolution(RunSizes* sizes)
     return CL_FALSE;
 }
 
+#define K 16
+
 /* Returns CL_TRUE on error */
 cl_bool findGoodRunSizes(RunSizes* sizes,
                          const CLInfo* ci,
@@ -321,18 +323,33 @@ cl_bool findGoodRunSizes(RunSizes* sizes,
 
     sizes->letTheDriverDoIt = CL_FALSE;
     sizes->groupSize     = groupSize;
-    sizes->area          = ia->mu_steps * ia->r_steps;
+    sizes->area          = ia->mu_steps * ia->r_steps / K;
     sizes->numChunks     = solution.n;
     sizes->extra         = solution.x;
     sizes->effectiveArea = sizes->area + sizes->extra;
     sizes->chunkSize     = sizes->effectiveArea / sizes->numChunks;
     sizes->blockSize = threadsPerCU * di->maxCompUnits;
 
-    sizes->global[0] = sizes->chunkSize;
-    sizes->global[1] = 1;
+    //sizes->global[0] = 1408;
+    sizes->global[0] = ia->r_steps;
+    sizes->global[1] = ia->mu_steps / K;
+    sizes->global[2] = 1;
+
+    //sizes->global[0] = 192;
+    //sizes->global[1] = 160;
+
+    if (ia->mu_steps % K != 0)
+        fail("mu not divisible by K\n");
+
+    //sizes->global[0] = 1408;
+    //sizes->global[1] = 1600 / K;
+    //sizes->global[2] = 1;
+
+
 
     sizes->local[0] = sizes->groupSize;
-    sizes->local[1] = 1;
+    sizes->local[1] = 4;
+    sizes->local[2] = 1;
 
     warn("Range:          { nu_steps = %u, mu_steps = %u, r_steps = %u }\n"
          "Iteration area: "ZU"\n"
