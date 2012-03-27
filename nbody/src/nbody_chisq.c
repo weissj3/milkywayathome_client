@@ -604,8 +604,9 @@ NBodyHistogram* nbCreateHistogram(const NBodyCtx* ctx,        /* Simulation cont
     }
 
     histogram->totalNum = totalNum; /* Total particles in range */
-
-    nbNormalizeHistogram(histogram);
+    
+    // We do not want normalized histograms. Its completely messing up the nbody search.
+    //nbNormalizeHistogram(histogram);
 
     return histogram;
 }
