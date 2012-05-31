@@ -25,6 +25,7 @@
 #include "nbody_chisq.h"
 #include "milkyway_util.h"
 #include "nbody_emd.h"
+#include "nbody_mass.h"
 
 
 /* From the range of a histogram, find the number of bins */
@@ -724,7 +725,7 @@ static double nbWorstCaseEMD(const NBodyHistogram* hist)
     return fabs(hist->data[0].lambda - hist->data[hist->nBin - 1].lambda);
 }
 
-double nbMatchEMD(const NBodyHistogram* data, const NBodyHistogram* histogram)
+double nbMatchEMD(const NBodyState * st, const NBodyHistogram* data, const NBodyHistogram* histogram, int totalSystemBodies)
 {
     unsigned int i;
     unsigned int n = data->nBin;
@@ -786,6 +787,23 @@ double nbMatchEMD(const NBodyHistogram* data, const NBodyHistogram* histogram)
 
     emd = emdCalc((const float*) dat, (const float*) hist, n, n, NULL);
 
+    //If we don't have a state don't modify anything
+    if (st != NULL){
+        
+        /* Correct the histogram for mass */
+        int N = totalSystemBodies;
+        real Nobs = (real)effTotalNum;
+        real Pobs = Nobs/N;
+        
+        real mass_per_particle = st->bodytab->bodynode.mass;
+        
+        int K = (int) mass_per_particle * Nobs * N / ((real)10. / (real)100000.);
+        
+        emd = emd + (double)propability_match(N, K, Pobs);
+        
+        mw_printf("EMD value %e", emd);
+    }
+    
     free(hist);
     free(dat);
 
@@ -864,7 +882,7 @@ double nbSystemChisq(const NBodyState* st,
             return 2.0 * worstEMD;
         }
 
-        return nbMatchEMD(data, histogram);
+        return nbMatchEMD(st, data, histogram, (int) st->nbody);
     }
     else
     {
@@ -883,7 +901,7 @@ double nbMatchHistogramFiles(const char* datHist, const char* matchHist)
 
     if (dat && match)
     {
-        emd = nbMatchEMD(dat, match);
+        emd = nbMatchEMD(NULL, dat, match, dat->totalNum);
     }
 
     free(dat);
