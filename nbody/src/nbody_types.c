@@ -52,7 +52,6 @@ static void freeNBodyTree(NBodyTree* t)
             p = Next(p);
         }
     }
-
     t->root = NULL;
     t->cellUsed = 0;
     t->maxDepth = 0;
@@ -105,11 +104,13 @@ int destroyNBodyState(NBodyState* st)
     int nThread = nbGetMaxThreads();
     int i;
 
+
+	mw_printf("\n \n Hello \n \n");
     freeNBodyTree(&st->tree);
     freeFreeCells(st->freeCell);
     mwFreeA(st->bodytab);
     mwFreeA(st->acctab);
-    mwFreeA(st->orbitTrace);
+    //mwFreeA(st->orbitTrace);
 
     free(st->checkpointResolved);
 
@@ -167,6 +168,8 @@ int destroyNBodyState(NBodyState* st)
 void setInitialNBodyState(NBodyState* st, const NBodyCtx* ctx, Body* bodies, int nbody)
 {
     static const NBodyTree emptyTree = EMPTY_TREE;
+    static const mwvector maxV = mw_vec(REAL_MAX, REAL_MAX, REAL_MAX);
+    int i;
 
     st->tree = emptyTree;
     st->freeCell = NULL;
@@ -178,8 +181,12 @@ void setInitialNBodyState(NBodyState* st, const NBodyCtx* ctx, Body* bodies, int
     st->nbody = nbody;
     st->bodytab = bodies;
 
-    st->nOrbitTrace = ctx->nStep;
-    st->orbitTrace = (mwvector*) mwCallocA(st->nOrbitTrace, sizeof(mwvector));
+
+    st->orbitTrace = (mwvector*) mwMallocA(N_ORBIT_TRACE_POINTS * sizeof(mwvector));
+    for (i = 0; i < N_ORBIT_TRACE_POINTS; ++i)
+    {
+        st->orbitTrace[i] = maxV;
+    }
 
     /* The tests may step the system from an arbitrary place, so make sure this is 0'ed */
     st->acctab = (mwvector*) mwCallocA(nbody, sizeof(mwvector));
@@ -242,8 +249,7 @@ NBodyStatus nbInitNBodyStateCL(NBodyState* st, const NBodyCtx* ctx)
     if (!nbCheckDevCapabilities(devInfo, ctx, st->nbody))
         return NBODY_CAPABILITY_ERROR;
 
-    if (   nbSetThreadCounts(st->workSizes, devInfo, ctx)
-        || nbSetWorkSizes(st->workSizes, devInfo, st->nbody, st->ignoreResponsive))
+    if (nbSetThreadCounts(st->workSizes, devInfo, ctx) || nbSetWorkSizes(st->workSizes, devInfo))
         return NBODY_ERROR;
 
     st->effNBody = nbFindEffectiveNBody(st->workSizes, st->usesExact, st->nbody);
@@ -427,12 +433,8 @@ void cloneNBodyState(NBodyState* st, const NBodyState* oldSt)
     st->acctab = (mwvector*) mwMallocA(nbody * sizeof(mwvector));
     memcpy(st->acctab, oldSt->acctab, nbody * sizeof(mwvector));
 
-    if (oldSt->orbitTrace)
-    {
-        st->orbitTrace = (mwvector*) mwMallocA(oldSt->nOrbitTrace * sizeof(mwvector));
-        memcpy(st->orbitTrace, oldSt->orbitTrace, oldSt->nOrbitTrace * sizeof(mwvector));
-        st->nOrbitTrace = oldSt->nOrbitTrace;
-    }
+    st->orbitTrace = (mwvector*) mwMallocA(N_ORBIT_TRACE_POINTS * sizeof(mwvector));
+    memcpy(st->orbitTrace, oldSt->orbitTrace, N_ORBIT_TRACE_POINTS * sizeof(mwvector));
 
     if (st->ci)
     {

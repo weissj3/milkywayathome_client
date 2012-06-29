@@ -89,9 +89,9 @@ typedef struct
     uint32_t step;
     uint32_t realSize;                   /* Does the checkpoint use float or double */
     uint32_t ptrSize;
-    uint32_t nOrbitTrace;
-    uint32_t treeIncest;
     real rsize;
+    uint32_t treeIncest;
+    uint32_t nOrbitTrace;
     NBodyCtx ctx;
 } NBodyCheckpointHeader;
 
@@ -104,7 +104,6 @@ static void nbPrepareWriteCheckpointHeader(NBodyCheckpointHeader* cp, const NBod
     strcpy(cp->header, hdr);
     cp->realSize = sizeof(real);
     cp->ptrSize = sizeof(void*);
-    cp->nOrbitTrace = st->nOrbitTrace;
 
     cp->majorVersion = NBODY_VERSION_MAJOR;
     cp->minorVersion= NBODY_VERSION_MINOR;
@@ -114,6 +113,7 @@ static void nbPrepareWriteCheckpointHeader(NBodyCheckpointHeader* cp, const NBod
     cp->step = st->step;
     cp->rsize = st->tree.rsize;
     cp->treeIncest = st->treeIncest;
+    cp->nOrbitTrace = N_ORBIT_TRACE_POINTS;
 }
 
 static void nbReadCheckpointHeader(NBodyCheckpointHeader* cp, NBodyCtx* ctx, NBodyState* st)
@@ -205,7 +205,7 @@ static int nbOpenCheckpointHandle(const NBodyState* st,
 
     if (writing)
     {
-        cp->cpFileSize = hdrSize + st->nbody * sizeof(Body) + st->nOrbitTrace * sizeof(mwvector);
+        cp->cpFileSize = hdrSize + st->nbody * sizeof(Body) + N_ORBIT_TRACE_POINTS * sizeof(mwvector);
         /* Make the file the right size in case it's a new file */
         if (ftruncate(cp->fd, cp->cpFileSize) < 0)
         {
@@ -311,7 +311,7 @@ static int nbOpenCheckpointHandle(const NBodyState* st,
 
     if (writing)
     {
-        cp->cpFileSize = (DWORD) (hdrSize + st->nbody * sizeof(Body) + st->nOrbitTrace * sizeof(mwvector));
+        cp->cpFileSize = (DWORD) (hdrSize + st->nbody * sizeof(Body) + N_ORBIT_TRACE_POINTS * sizeof(mwvector));
     }
     else
     {
@@ -414,13 +414,9 @@ static int nbThawState(NBodyCtx* ctx, NBodyState* st, CheckpointHandle* cp)
     memcpy(st->bodytab, p, bodySize);
     p += bodySize;
 
-    if (traceSize != 0)
-    {
-        st->nOrbitTrace = cpHdr.nOrbitTrace;
-        st->orbitTrace = (mwvector*) mwMallocA(traceSize);
-        memcpy(st->orbitTrace, p, traceSize);
-        p += traceSize;
-    }
+    st->orbitTrace = (mwvector*) mwMallocA(traceSize);
+    memcpy(st->orbitTrace, p, traceSize);
+    p += traceSize;
 
     if (strncmp(p, tail, sizeof(tail)))
     {
@@ -440,7 +436,7 @@ static int nbThawState(NBodyCtx* ctx, NBodyState* st, CheckpointHandle* cp)
 static void nbFreezeState(const NBodyCtx* ctx, const NBodyState* st, CheckpointHandle* cp)
 {
     const size_t bodySize = st->nbody * sizeof(Body);
-    const size_t traceSize = st->nOrbitTrace * sizeof(mwvector);
+    const size_t traceSize = N_ORBIT_TRACE_POINTS * sizeof(mwvector);
     char* p = cp->mptr;
     NBodyCheckpointHeader cpHdr;
 
@@ -454,11 +450,8 @@ static void nbFreezeState(const NBodyCtx* ctx, const NBodyState* st, CheckpointH
     memcpy(p, st->bodytab, bodySize);
     p += bodySize;
 
-    if (st->orbitTrace)
-    {
-        memcpy(p, st->orbitTrace, traceSize);
-        p += traceSize;
-    }
+    memcpy(p, st->orbitTrace, traceSize);
+    p += traceSize;
 
     strcpy(p, tail);
 }

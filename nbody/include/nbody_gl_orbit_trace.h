@@ -46,7 +46,7 @@ private:
 
 public:
     void drawTrace(const glm::mat4& modelMatrix);
-    void updatePoints(const FloatPos* cmList, GLuint step);
+    void addPoint(const GLfloat cm[3]);
 
     OrbitTrace(const scene_t* scene);
     ~OrbitTrace();

@@ -24,7 +24,6 @@
 
 struct SceneData
 {
-    unsigned int currentStep;
     float currentTime;
     float timeEvolve;
     glm::vec3 centerOfMass;

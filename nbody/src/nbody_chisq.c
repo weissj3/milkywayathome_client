@@ -25,6 +25,7 @@
 #include "nbody_chisq.h"
 #include "milkyway_util.h"
 #include "nbody_emd.h"
+#include "nbody_mass.h"
 
 
 /* From the range of a histogram, find the number of bins */
@@ -450,6 +451,9 @@ void nbPrintHistogram(FILE* f, const NBodyHistogram* histogram)
 
     mw_boinc_print(f, "<histogram>\n");
     fprintf(f, "n = %u\n", histogram->totalNum);
+    fprintf(f, "massPerParticle = %12.10f\n", histogram->massPerParticle);
+    fprintf(f, "totalSimulated = %u\n", histogram->totalSimulated);
+
     for (i = 0; i < nBin; ++i)
     {
         data = &histogram->data[i];
@@ -581,6 +585,8 @@ NBodyHistogram* nbCreateHistogram(const NBodyCtx* ctx,        /* Simulation cont
     histogram->nBin = nBin;
     histogram->hasRawCounts = TRUE;
     histogram->params = *hp;
+    histogram->totalSimulated = (unsigned int) st->nbody;
+    histogram->massPerParticle = (double) st->bodytab->bodynode.mass;
     histData = histogram->data;
 
     /* It does not make sense to ignore bins in a generated histogram */
@@ -628,16 +634,20 @@ NBodyHistogram* nbReadHistogram(const char* histogramFile)
     mwbool error = FALSE;
     mwbool readParams = FALSE; /* Read some other optional histogram params */
     mwbool readNGen = FALSE;  /* Read the scale for the histogram (particles in data bin) */
-    unsigned int nGen = 0;    /* Number of particles read from the */
+    mwbool readTotalSim = FALSE; /*Read the total number of particles simulated for the histogram */
+    mwbool readMass = FALSE; /*Read the mass per particle for the histogram*/
+    unsigned int nGen = 0;    /* Number of particles read from the histogram */
+    unsigned int totalSim = 0;	/*Total number of simulated particles read from the histogram */
+    double mass = 0;			/*mass per particle read from the histogram */
     char lineBuf[1024];
 
     f = mwOpenResolved(histogramFile, "r");
+    
     if (f == NULL)
     {
         mw_printf("Opening histogram file '%s'\n", histogramFile);
         return NULL;
     }
-
     fsize = mwCountLinesInFile(f);
     if (fsize == 0)
     {
@@ -649,7 +659,7 @@ NBodyHistogram* nbReadHistogram(const char* histogramFile)
     histogram->hasRawCounts = FALSE;     /* Do we want to include these? */
     histData = histogram->data;
 
-
+	
     while (fgets(lineBuf, (int) sizeof(lineBuf), f))
     {
         ++lineNum;
@@ -688,6 +698,24 @@ NBodyHistogram* nbReadHistogram(const char* histogramFile)
                 continue;
             }
         }
+        if (!readMass)
+        {
+            rc = sscanf(lineBuf, " massPerParticle = %lf \n", &mass);
+            if (rc == 1)
+            {
+                readMass = TRUE;
+                continue;
+            }
+        }
+        if (!readTotalSim)
+        {
+            rc = sscanf(lineBuf, " totalSimulated = %u \n", &totalSim);
+            if (rc == 1)
+            {
+                readTotalSim = TRUE;
+                continue;
+            }
+        }
 
         rc = sscanf(lineBuf,
                     "%d %lf %lf %lf \n",
@@ -708,7 +736,7 @@ NBodyHistogram* nbReadHistogram(const char* histogramFile)
     fclose(f);
 
     if (error)
-    {
+    {	
         free(histogram);
         return NULL;
     }
@@ -716,6 +744,8 @@ NBodyHistogram* nbReadHistogram(const char* histogramFile)
 
     histogram->nBin = fileCount;
     histogram->totalNum = nGen;
+    histogram->totalSimulated = totalSim;
+    histogram->massPerParticle = mass;
     return histogram;
 }
 
@@ -724,8 +754,10 @@ static double nbWorstCaseEMD(const NBodyHistogram* hist)
     return fabs(hist->data[0].lambda - hist->data[hist->nBin - 1].lambda);
 }
 
-double nbMatchEMD(const NBodyHistogram* data, const NBodyHistogram* histogram)
+double nbMatchEMD(const NBodyState * st, const NBodyHistogram* data, const NBodyHistogram* histogram, int totalSystemBodies)
 {
+	//FIXME most of the stuff in here is garbage and doesnt do anything -Steve
+	//NBodyState no longer needs to be passed in
     unsigned int i;
     unsigned int n = data->nBin;
     unsigned int effTotalNum = 0;
@@ -734,6 +766,8 @@ double nbMatchEMD(const NBodyHistogram* data, const NBodyHistogram* histogram)
     WeightPos* dat;
     double renormalize = 0.0;
 
+
+	//This checking doesn't need to happen for what we are doing --Steve
     if (data->nBin != histogram->nBin)
     {
         /* FIXME?: We could have mismatched histogram sizes, but I'm not sure what to do with ignored bins and renormalization */
@@ -762,7 +796,7 @@ double nbMatchEMD(const NBodyHistogram* data, const NBodyHistogram* histogram)
     /* We need a correctly normalized histogram with the missing bins filtered out */
     hist = mwCalloc(n, sizeof(WeightPos));
     dat = mwCalloc(n, sizeof(WeightPos));
-
+    
     for (i = 0; i < n; ++i)
     {
         if (data->data[i].useBin)
@@ -785,7 +819,42 @@ double nbMatchEMD(const NBodyHistogram* data, const NBodyHistogram* histogram)
     }
 
     emd = emdCalc((const float*) dat, (const float*) hist, n, n, NULL);
-
+	
+    //If we don't have a state don't modify anything
+    //With the changes to the hist files the st is not necessary --Steve
+    if (st =! NULL || TRUE){
+        
+        /* Correct the histogram for mass */
+        unsigned int N = histogram->totalSimulated;
+        unsigned int Nobs = histogram->totalNum;
+        //double Nobsprime = (double)data->totalNum;
+        real Pobs = (real)Nobs/(real)N;
+        
+        real mass_per_particle_hist = histogram->massPerParticle;
+        real mass_per_particle_data = data->massPerParticle;
+        /*
+        mw_printf("EMD value %e\n", emd);
+        mw_printf("mass per particle hist: %e \n", mass_per_particle_hist);
+        mw_printf("nmass per particle data: %e \n", mass_per_particle_data);
+        mw_printf("Nobs: %u\n", Nobs);
+        mw_printf("Total bodies: %u \n", N);
+        mw_printf("Nobsprime: %f\n", Nobsprime);
+        mw_printf("Ratio %e \n", mass_per_particle_hist*100000/(mass_per_particle_data*100000));
+        */
+        double ratio = mass_per_particle_hist*100000/(mass_per_particle_data*100000);
+        
+        
+        unsigned int K = (unsigned int) (ratio*(double)data->totalNum);
+        //mw_printf("<K>%u</K>\n", K);
+        
+        if(emd > 50){
+			mw_printf("emd too high!\n");
+		}
+        
+        emd = -(mw_log(1-emd/50) + (double) propability_match(N, K, Pobs));
+        
+    }
+    
     free(hist);
     free(dat);
 
@@ -864,7 +933,7 @@ double nbSystemChisq(const NBodyState* st,
             return 2.0 * worstEMD;
         }
 
-        return nbMatchEMD(data, histogram);
+        return nbMatchEMD(st, data, histogram, (int) st->nbody);
     }
     else
     {
@@ -883,8 +952,10 @@ double nbMatchHistogramFiles(const char* datHist, const char* matchHist)
 
     if (dat && match)
     {
-        emd = nbMatchEMD(dat, match);
+
+        emd = nbMatchEMD(NULL, dat, match, dat->totalNum);
     }
+
 
     free(dat);
     free(match);

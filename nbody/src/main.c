@@ -609,9 +609,8 @@ int main(int argc, const char* argv[])
     else if (nbf.matchHistogram)
     {
         double emd;
-
         emd = nbMatchHistogramFiles(nbf.histogramFileName, nbf.matchHistogram);
-        mw_printf("%.15f\n", emd);
+        mw_printf("<search_likelihood>%.15f</search_likelihood>\n", -emd);
         rc = isnan(emd);
     }
     else

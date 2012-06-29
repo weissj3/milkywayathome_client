@@ -222,7 +222,7 @@ private:
           drawOrbitTrace((bool) args->drawOrbitTrace),
           drawParticles(true),
           drawHelp(false),
-          quitOnSimulationComplete((bool) args->quitOnComplete)
+          quitOnSimulationComplete((bool) !args->noQuitOnComplete)
         { }
     } drawOptions;
 
@@ -918,12 +918,12 @@ void NBodyGraphics::prepareVAOs()
 }
 
 // return TRUE if something was popped from the queue, FALSE if it was empty
-static int nbPopCircularQueue(scene_t* scene,
+static int nbPopCircularQueue(NBodyCircularQueue* queue,
+                              int nbody,
                               GLuint positionBuffer,
                               SceneData* sceneData,
                               OrbitTrace* trace)
 {
-    NBodyCircularQueue* queue = &scene->queue;
     int head = OPA_load_int(&queue->head);
     int tail = OPA_load_int(&queue->tail);
 
@@ -933,19 +933,18 @@ static int nbPopCircularQueue(scene_t* scene,
     }
 
     const SceneInfo* info = &queue->info[head];
-    const GLfloat* bodyData = (const GLfloat*) nbSceneGetQueueBuffer(scene, head);
+    const GLfloat* bodyData = (const GLfloat*) &queue->bodyData[head * nbody];
 
     glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, 4 * scene->nbody * sizeof(GLfloat), bodyData);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, 4 * nbody * sizeof(GLfloat), bodyData);
 
-    sceneData->currentStep = info->currentStep;
     sceneData->currentTime = info->currentTime;
     sceneData->timeEvolve = info->timeEvolve;
     sceneData->centerOfMass = glm::vec3(info->rootCenterOfMass[0],
                                         info->rootCenterOfMass[1],
                                         info->rootCenterOfMass[2]);
 
-    trace->updatePoints(nbSceneGetOrbitTrace(scene), sceneData->currentStep);
+    trace->addPoint(info->rootCenterOfMass);
 
     head = (head + 1) % NBODY_CIRC_QUEUE_SIZE;
     OPA_store_int(&queue->head, head);
@@ -955,7 +954,8 @@ static int nbPopCircularQueue(scene_t* scene,
 bool NBodyGraphics::readSceneData()
 {
     bool success;
-    success = (bool) nbPopCircularQueue(this->scene, this->positionBuffer, &this->sceneData, &this->orbitTrace);
+    success = (bool) nbPopCircularQueue(&this->scene->queue, this->scene->nbody,
+                                        this->positionBuffer, &this->sceneData, &this->orbitTrace);
 
     if (success)
     {
