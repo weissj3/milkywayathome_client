@@ -263,11 +263,8 @@ typedef struct MW_ALIGN_TYPE
 
     unsigned int step;
     int nbody;
-    int effNBody;            /* Sometimes needed rounded up number of bodies. >= nbody are just padding */
     int treeIncest;          /* Tree incest has occured */
     int potentialEvalError;  /* Error occured in calling custom Lua potential */
-
-    unsigned int maxDepth;   /* Maximum depth before overflow. Used for CL version */
 
     mwbool ignoreResponsive;
     mwbool usesExact;

@@ -106,18 +106,6 @@ static cl_ulong nbCalculateDepthLimitationFromCalculatedForceKernelLocalMemoryUs
     return estMaxDepth - 1;  /* A bit extra will be used. Some kind of rounding up */
 }
 
-cl_uint nbFindMaxDepthForDevice(const DevInfo* di, const NBodyWorkSizes* ws, cl_bool useQuad)
-{
-    cl_ulong d;
-
-    d = nbCalculateDepthLimitationFromCalculatedForceKernelLocalMemoryUsage(di, ws, useQuad);
-
-    /* TODO: We should be able to reduce this; this is usually quite a
-     * bit deeper than we can go before hitting precision limits */
-
-    return (cl_uint) mwMin(d, NB_MAX_MAX_DEPTH);
-}
-
 
 static void nbPrintNBodyWorkSizes(const NBodyWorkSizes* ws)
 {
@@ -1674,23 +1662,6 @@ cl_int nbSetInitialTreeStatus(NBodyState* st)
 static cl_uint nbFindInc(cl_int warpSize, cl_uint nbody)
 {
     return (nbody + warpSize - 1) & (-warpSize);
-}
-
-/* In some cases to avoid conditionally barriering we want to round up to nearest workgroup size.
-   Find the least common multiple necessary for kernels that need to avoid the issue
- */
-cl_int nbFindEffectiveNBody(const NBodyWorkSizes* workSizes, cl_bool exact, cl_int nbody)
-{
-    if (exact)
-    {
-        /* Exact force kernel needs this */
-        return mwNextMultiple((cl_int) workSizes->local[7], nbody);
-    }
-    else
-    {
-        /* Maybe tree construction will need this later */
-        return nbody;
-    }
 }
 
 cl_int nbCreateBuffers(const NBodyCtx* ctx, NBodyState* st)

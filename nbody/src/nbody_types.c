@@ -247,9 +247,6 @@ NBodyStatus nbInitNBodyStateCL(NBodyState* st, const NBodyCtx* ctx)
         || nbSetWorkSizes(st->workSizes, devInfo, st->nbody, st->ignoreResponsive))
         return NBODY_ERROR;
 
-    st->effNBody = nbFindEffectiveNBody(st->workSizes, st->usesExact, st->nbody);
-    st->maxDepth = nbFindMaxDepthForDevice(devInfo, st->workSizes, ctx->useQuad);
-
     st->usesConsistentMemory =  (mwIsNvidiaGPUDevice(devInfo) && mwNvidiaInlinePTXAvailable(st->ci->plat))
                               || mwDeviceHasConsistentMemory(devInfo);
 
