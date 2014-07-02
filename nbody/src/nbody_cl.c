@@ -767,14 +767,6 @@ cl_bool nbCheckDevCapabilities(const DevInfo* di, const NBodyCtx* ctx, cl_uint n
         return CL_FALSE;
     }
 
-    if (   !strstr(di->exts, "cl_khr_global_int32_base_atomics")
-        || !strstr(di->exts, "cl_khr_global_int32_extended_atomics")
-        || !strstr(di->exts, "cl_khr_local_int32_base_atomics"))
-    {
-        mw_printf("Device lacks necessary atomics extensions\n");
-        return CL_FALSE;
-    }
-
     if (nNode > maxNodes)
     {
         mw_printf("Simulation of %u bodies requires "LLU" nodes, "
