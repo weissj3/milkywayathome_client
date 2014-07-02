@@ -346,13 +346,7 @@ inline real4 externalAcceleration(real x, real y, real z)
     RVPtr _accX, RVPtr _accY, RVPtr _accZ,              \
     RVPtr _mass,                                        \
                                                         \
-    RVPtr _maxX, RVPtr _maxY, RVPtr _maxZ,              \
-    RVPtr _minX, RVPtr _minY, RVPtr _minZ,              \
-                                                        \
-    IVPtr _start, IVPtr _count,                         \
-    IVPtr _child, IVPtr _sort,                          \
-                                                        \
-    RVPtr _critRadii,                                   \
+    IVPtr _next, IVPtr _more, RVPtr _rcrit2,            \
                                                         \
     RVPtr _quadXX, RVPtr _quadXY, RVPtr _quadXZ,        \
     RVPtr _quadYY, RVPtr _quadYZ,                       \

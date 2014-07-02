@@ -111,21 +111,11 @@ static void nbPrintNBodyWorkSizes(const NBodyWorkSizes* ws)
 {
     mw_printf("\n"
               "Kernel launch sizes:\n"
-              "  Bounding box kernel:  "ZU", "ZU"\n"
-              "  Tree build kernel:    "ZU", "ZU"\n"
-              "  Summarization kernel: "ZU", "ZU"\n"
-              "  Sort kernel:          "ZU", "ZU"\n"
-              "  Quadrupole kernel:    "ZU", "ZU"\n"
               "  Force kernel:         "ZU", "ZU"\n"
               "  Integration kernel:   "ZU", "ZU"\n"
               "\n",
               ws->global[0], ws->local[0],
               ws->global[1], ws->local[1],
-              ws->global[2], ws->local[2],
-              ws->global[3], ws->local[3],
-              ws->global[4], ws->local[4],
-              ws->global[5], ws->local[5],
-              ws->global[6], ws->local[6]
         );
 }
 
@@ -386,42 +376,36 @@ static cl_int nbSetKernelArguments(cl_kernel kern, NBodyBuffers* nbb, cl_bool ex
 
         err |= clSetKernelArg(kern, 9, sizeof(cl_mem), &nbb->masses);
 
-        err |= nbSetMemArrayArgs(kern, nbb->max, 10);
-        err |= nbSetMemArrayArgs(kern, nbb->min, 13);
-
-        err |= clSetKernelArg(kern, 16, sizeof(cl_mem), &nbb->start);
-        err |= clSetKernelArg(kern, 17, sizeof(cl_mem), &nbb->count);
-        err |= clSetKernelArg(kern, 18, sizeof(cl_mem), &nbb->child);
-        err |= clSetKernelArg(kern, 19, sizeof(cl_mem), &nbb->sort);
-        err |= clSetKernelArg(kern, 20, sizeof(cl_mem), nbb->critRadii ? &nbb->critRadii : &nbb->dummy[0]);
-
+        err |= clSetKernelArg(kern, 10, sizeof(cl_mem), &nbb->next);
+        err |= clSetKernelArg(kern, 11, sizeof(cl_mem), &nbb->more);
+        err |= clSetKernelArg(kern, 12, sizeof(cl_mem), &nbb->rcrit2);
 
         if (nbb->quad.xx) /* If we're using quadrupole moments */
         {
-            err |= clSetKernelArg(kern, 21, sizeof(cl_mem), &nbb->quad.xx);
-            err |= clSetKernelArg(kern, 22, sizeof(cl_mem), &nbb->quad.xy);
-            err |= clSetKernelArg(kern, 23, sizeof(cl_mem), &nbb->quad.xz);
+            err |= clSetKernelArg(kern, 13, sizeof(cl_mem), &nbb->quad.xx);
+            err |= clSetKernelArg(kern, 14, sizeof(cl_mem), &nbb->quad.xy);
+            err |= clSetKernelArg(kern, 15, sizeof(cl_mem), &nbb->quad.xz);
 
-            err |= clSetKernelArg(kern, 24, sizeof(cl_mem), &nbb->quad.yy);
-            err |= clSetKernelArg(kern, 25, sizeof(cl_mem), &nbb->quad.yz);
+            err |= clSetKernelArg(kern, 16, sizeof(cl_mem), &nbb->quad.yy);
+            err |= clSetKernelArg(kern, 17, sizeof(cl_mem), &nbb->quad.yz);
 
-            err |= clSetKernelArg(kern, 26, sizeof(cl_mem), &nbb->quad.zz);
+            err |= clSetKernelArg(kern, 18, sizeof(cl_mem), &nbb->quad.zz);
         }
         else
         {
-            err |= clSetKernelArg(kern, 21, sizeof(cl_mem), &nbb->dummy[1]);
-            err |= clSetKernelArg(kern, 22, sizeof(cl_mem), &nbb->dummy[2]);
-            err |= clSetKernelArg(kern, 23, sizeof(cl_mem), &nbb->dummy[3]);
+            err |= clSetKernelArg(kern, 13, sizeof(cl_mem), &nbb->dummy[0]);
+            err |= clSetKernelArg(kern, 14, sizeof(cl_mem), &nbb->dummy[1]);
+            err |= clSetKernelArg(kern, 15, sizeof(cl_mem), &nbb->dummy[2]);
 
-            err |= clSetKernelArg(kern, 24, sizeof(cl_mem), &nbb->dummy[4]);
-            err |= clSetKernelArg(kern, 25, sizeof(cl_mem), &nbb->dummy[5]);
+            err |= clSetKernelArg(kern, 16, sizeof(cl_mem), &nbb->dummy[3]);
+            err |= clSetKernelArg(kern, 17, sizeof(cl_mem), &nbb->dummy[4]);
 
-            err |= clSetKernelArg(kern, 26, sizeof(cl_mem), &nbb->dummy[6]);
+            err |= clSetKernelArg(kern, 18, sizeof(cl_mem), &nbb->dummy[5]);
         }
 
-        err |= clSetKernelArg(kern, 27, sizeof(cl_mem), &nbb->treeStatus);
-        err |= clSetKernelArg(kern, 28, sizeof(cl_int), &zeroVal);
-        err |= clSetKernelArg(kern, 29, sizeof(cl_int), &zeroVal);
+        err |= clSetKernelArg(kern, 19, sizeof(cl_mem), &nbb->treeStatus);
+        err |= clSetKernelArg(kern, 20, sizeof(cl_int), &zeroVal);
+        err |= clSetKernelArg(kern, 21, sizeof(cl_int), &zeroVal);
     }
     else
     {
@@ -433,14 +417,14 @@ static cl_int nbSetKernelArguments(cl_kernel kern, NBodyBuffers* nbb, cl_bool ex
 
         err |= clSetKernelArg(kern, 9, sizeof(cl_mem), &nbb->masses);
 
-        for (i = 10; i < 27; ++i)
+        for (i = 10; i < 19; ++i)
         {
             err |= clSetKernelArg(kern, i, sizeof(cl_mem), &nbb->dummy[i - 10]);
         }
 
-        err |= clSetKernelArg(kern, 27, sizeof(cl_mem), &nbb->treeStatus);
-        err |= clSetKernelArg(kern, 28, sizeof(cl_int), &zeroVal);
-        err |= clSetKernelArg(kern, 29, sizeof(cl_int), &zeroVal);
+        err |= clSetKernelArg(kern, 19, sizeof(cl_mem), &nbb->treeStatus);
+        err |= clSetKernelArg(kern, 20, sizeof(cl_int), &zeroVal);
+        err |= clSetKernelArg(kern, 21, sizeof(cl_int), &zeroVal);
     }
 
     return err;
