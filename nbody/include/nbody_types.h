@@ -136,6 +136,7 @@ typedef struct MW_ALIGN_TYPE
     real yy, yz;
     real zz;
 } NBodyQuadMatrix;
+{
 
 
 
@@ -196,17 +197,10 @@ typedef struct
     cl_mem pos[3];
     cl_mem vel[3];
     cl_mem acc[3];
-    cl_mem max[3];
-    cl_mem min[3];
     cl_mem masses;
-
-    cl_mem start; /* TODO: We can reuse other buffers with this later to save memory */
-    cl_mem count;
-    cl_mem child;
-    cl_mem sort;
-
-    cl_mem critRadii; /* Used by the alternative cell opening criterion.
-                         Unnecessary for BH86. */
+    cl_mem next;
+    cl_mem more;
+    cl_mem rcrit2;
 
     struct
     {
@@ -217,35 +211,14 @@ typedef struct
 
     cl_mem treeStatus;
 
-    /* Just valid non-aliasing, read only buffers.
-     * Used as dummy arguments for kernel arguments we don't need
-     * depending on the specific simulation options since you can't set
-     * a kernel argument to null.
-     *
-     * The AMD runtime will rebuild the kernel with noalias if it
-     * thinks an argument aliases, so use this to avoid that.
-     *
-     * This is probably less of a mess than the work required to
-     * account for fewer / a different order of arguments in different
-     * cases.
-     */
-    cl_mem dummy[18];
 } NBodyBuffers;
 
 
-/* 8 used by tree + 1 with quad, 2 used by exact. 1 shared. */
-#define NKERNELS 11
 
+#define NKERNELS 3
 
 typedef struct
 {
-    cl_kernel boundingBox;
-    cl_kernel buildTreeClear;
-    cl_kernel buildTree;
-    cl_kernel summarizationClear;
-    cl_kernel summarization;
-    cl_kernel sort;
-    cl_kernel quadMoments;
     cl_kernel forceCalculation;
     cl_kernel integration;
 
