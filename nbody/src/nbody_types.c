@@ -247,9 +247,6 @@ NBodyStatus nbInitNBodyStateCL(NBodyState* st, const NBodyCtx* ctx)
         || nbSetWorkSizes(st->workSizes, devInfo, st->nbody, st->ignoreResponsive))
         return NBODY_ERROR;
 
-    st->usesConsistentMemory =  (mwIsNvidiaGPUDevice(devInfo) && mwNvidiaInlinePTXAvailable(st->ci->plat))
-                              || mwDeviceHasConsistentMemory(devInfo);
-
     if (nbLoadKernels(ctx, st))
         return NBODY_CL_ERROR;
 

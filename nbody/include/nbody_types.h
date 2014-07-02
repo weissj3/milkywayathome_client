@@ -269,7 +269,6 @@ typedef struct MW_ALIGN_TYPE
     mwbool ignoreResponsive;
     mwbool usesExact;
     mwbool usesQuad;
-    mwbool usesConsistentMemory;
     mwbool dirty;      /* Whether the view of the bodies is consistent with the view in the CL buffers */
     mwbool usesCL;
     mwbool useCLCheckpointing;
