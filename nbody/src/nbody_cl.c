@@ -187,13 +187,6 @@ cl_int nbSetAllKernelArguments(NBodyState* st)
 
     if (!exact)
     {
-        err |= nbSetKernelArguments(k->boundingBox, st->nbb, exact);
-        err |= nbSetKernelArguments(k->buildTreeClear, st->nbb, exact);
-        err |= nbSetKernelArguments(k->buildTree, st->nbb, exact);
-        err |= nbSetKernelArguments(k->summarizationClear, st->nbb, exact);
-        err |= nbSetKernelArguments(k->summarization, st->nbb, exact);
-        err |= nbSetKernelArguments(k->sort, st->nbb, exact);
-        err |= nbSetKernelArguments(k->quadMoments, st->nbb, exact);
         err |= nbSetKernelArguments(k->forceCalculation, st->nbb, exact);
         err |= nbSetKernelArguments(k->integration, st->nbb, exact);
     }
@@ -221,13 +214,6 @@ cl_int nbReleaseKernels(NBodyState* st)
     cl_int err = CL_SUCCESS;
     NBodyKernels* kernels = st->kernels;
 
-    err |= clReleaseKernel_quiet(kernels->boundingBox);
-    err |= clReleaseKernel_quiet(kernels->buildTreeClear);
-    err |= clReleaseKernel_quiet(kernels->buildTree);
-    err |= clReleaseKernel_quiet(kernels->summarizationClear);
-    err |= clReleaseKernel_quiet(kernels->summarization);
-    err |= clReleaseKernel_quiet(kernels->quadMoments);
-    err |= clReleaseKernel_quiet(kernels->sort);
     err |= clReleaseKernel_quiet(kernels->forceCalculation);
     err |= clReleaseKernel_quiet(kernels->integration);
 
