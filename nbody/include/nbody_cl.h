@@ -29,10 +29,6 @@
 extern "C" {
 #endif
 
-
-cl_bool nbSetWorkSizes(NBodyWorkSizes* ws, const DevInfo* di, cl_int nbody, cl_bool ignoreResponsive);
-cl_bool nbSetThreadCounts(NBodyWorkSizes* ws, const DevInfo* di, const NBodyCtx* ctx);
-
 cl_bool nbLoadKernels(const NBodyCtx* ctx, NBodyState* st);
 cl_bool nbCheckDevCapabilities(const DevInfo* di, const NBodyCtx* ctx, cl_uint nbody);
 
