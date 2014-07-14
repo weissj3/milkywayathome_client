@@ -223,18 +223,6 @@ cl_int nbReleaseKernels(NBodyState* st)
     return err;
 }
 
-static cl_uint nbFindNNode(const DevInfo* di, cl_int nbody)
-{
-    cl_uint nNode = 2 * nbody;
-
-    if (nNode < 1024 * di->maxCompUnits)
-        nNode = 1024 * di->maxCompUnits;
-    while ((nNode & (di->warpSize - 1)) != 0)
-        ++nNode;
-
-    return nNode - 1;
-}
-
 #ifndef NDEBUG
   #define NBODY_DEBUG_KERNEL 1
 #else
@@ -257,22 +245,6 @@ static char* nbGetCompileFlags(const NBodyCtx* ctx, const NBodyState* st, const 
                  "-cl-mad-enable "
 
                  "-DNBODY=%d "
-                 "-DEFFNBODY=%d "
-                 "-DNNODE=%u "
-                 "-DWARPSIZE=%u "
-
-                 "-DNOSORT=%d "
-
-                 "-DTHREADS1="ZU" "
-                 "-DTHREADS2="ZU" "
-                 "-DTHREADS3="ZU" "
-                 "-DTHREADS4="ZU" "
-                 "-DTHREADS5="ZU" "
-                 "-DTHREADS6="ZU" "
-                 "-DTHREADS7="ZU" "
-                 "-DTHREADS8="ZU" "
-
-                 "-DMAXDEPTH=%u "
 
                  "-DTIMESTEP=%a "
                  "-DEPS2=%a "
@@ -314,28 +286,12 @@ static char* nbGetCompileFlags(const NBodyCtx* ctx, const NBodyState* st, const 
 
                  "%s "
                  "%s "
-                 "-DHAVE_INLINE_PTX=%d "
-                 "-DHAVE_CONSISTENT_MEMORY=%d ",
                  NBODY_DEBUG_KERNEL,
                  DOUBLEPREC,
 
                  st->nbody,
-                 st->effNBody,
-                 nbFindNNode(di, st->nbody),
-                 di->warpSize,
 
                  (di->devType == CL_DEVICE_TYPE_CPU),
-
-                 ws->threads[0],
-                 ws->threads[1],
-                 ws->threads[2],
-                 ws->threads[3],
-                 ws->threads[4],
-                 ws->threads[5],
-                 ws->threads[6],
-                 ws->threads[7],
-
-                 st->maxDepth,
 
                  ctx->timestep,
                  ctx->eps2,
@@ -382,8 +338,6 @@ static char* nbGetCompileFlags(const NBodyCtx* ctx, const NBodyState* st, const 
                  /* Misc. other stuff */
                  mwHasNvidiaCompilerFlags(di) ? "-cl-nv-verbose" : "",
                  nbMaybeNvMaxRegCount(di, ctx),
-                 mwNvidiaInlinePTXAvailable(st->ci->plat),
-                 st->usesConsistentMemory
             ) < 1)
     {
         mw_printf("Error getting compile flags\n");
