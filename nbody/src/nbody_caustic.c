@@ -224,6 +224,13 @@ static void gfield_close(double rho, double z, int n, double *rfield, double *zf
     /* roots stored in re[] and re2[] */
 
 
+    // This is HORRIBLY written.  Will fix inline algebra and floating point issues.  
+    // Note that the multiplication of more than two double precision numbers is NOT a commutative algebra
+
+.  
+    // If the writer sees this before I get to it, please note that this could easily cause problems. 
+    // Jake Bauer, 9/18/2014
+
     double factor = -8.0*M_PI*G*rate_n[n]*4498.6589/(rho*V_n[n]*1.0226831);
 
     if(count==2)
@@ -269,7 +276,7 @@ mwvector causticHaloAccel(const Halo* h, mwvector pos, real r)
     for (n = 1; n <= 20; n++)
     {
 
-        /* tricusp */
+        // tricusp 
         R=(3.0-mw_sqrt(1.0+(8.0/p_n[n])*(rho-a_n[n])))/4.0;
         l=(3.0+mw_sqrt(1.0+(8.0/p_n[n])*(rho-a_n[n])))/4.0;
         tr=2.0*p_n[n]*mw_sqrt(cube(R)*(1.0-R));
@@ -281,14 +288,14 @@ mwvector causticHaloAccel(const Halo* h, mwvector pos, real r)
             gfield_close(rho,Z(pos),n,&rfield,&zfield);
         }
 
-        else /* far */
+        else // far 
         {
             gfield_far(rho,Z(pos),n,&rfield,&zfield);        
         }
 
     }
 
-    if(rho<0.000001)
+    if(rho<1.0e-6) 
     {
         X(accel) = 0.0;
         Y(accel) = 0.0;
