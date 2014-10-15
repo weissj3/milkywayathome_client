@@ -146,6 +146,15 @@ static int nbGeneratePlummerCore(lua_State* luaSt,
 
         b.bodynode.pos = plummerBodyPosition(prng, rShift, radiusScale, r);
         b.vel = plummerBodyVelocity(prng, vShift, velScale, r);
+        
+        if((b.vel.x < 0 && b.bodynode.pos.y > 0 )|| (b.vel.x > 0 && b.bodynode.pos.y < 0))
+        {
+            b.vel.x = -b.vel.x;
+        }
+        if((b.vel.y < 0 && b.bodynode.pos.x > 0 )|| (b.vel.y > 0 && b.bodynode.pos.x < 0))
+        {
+            b.vel.y = -b.vel.y;
+        }
 
         assert(nbPositionValid(b.bodynode.pos));
 

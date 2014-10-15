@@ -832,7 +832,7 @@ NBodyGraphics::NBodyGraphics(scene_t* scene_, GLFWwindow* window_, const VisArgs
     this->createPositionBuffer();
     this->particleTexture = nbglCreateParticleTexture(32);
 
-    this->galaxyModel = scene->hasGalaxy ? new GalaxyModel() : NULL;
+    this->galaxyModel = scene->hasGalaxy ? NULL : NULL;
 
     this->prepareContext();
 
