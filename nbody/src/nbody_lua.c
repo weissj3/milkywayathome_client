@@ -49,6 +49,11 @@ static int getHistogramFunc(lua_State* luaSt)
     return mw_lua_getglobalfunction(luaSt, "makeHistogram");
 }
 
+static int getTimeStepWrapup(lua_State* luaSt) //Function to run misc actions after every timestep
+{
+  return mw_lua_getglobalfunction(luaSt, "timeStepWrapup");
+}
+
 static int getBodiesFunc(lua_State* luaSt)
 {
     return mw_lua_getglobalfunction(luaSt, "makeBodies");
@@ -597,6 +602,44 @@ static int nbEvaluateInitialNBodyState(lua_State* luaSt, NBodyCtx* ctx, NBodySta
     setInitialNBodyState(st, ctx, bodies, nbody);
 
     return 0;
+}
+
+
+/////////////////////////////////////////////////////////////////////
+//nbWrapup() is called at the end of the nbRunSystemPlain and adds
+//additional end-timestep LUA functionality
+/////////////////////////////////////////////////////////////////////
+int nbWrapup(NBodyCtx* ctx, const NBodyFlags* nbf)
+{  
+    lua_State* luaSt;
+    int rc;
+    
+    luaSt = nbOpenLuaStateWithScript(nbf, NULL);
+    if (!luaSt)
+    {
+        return 1;
+    }
+
+    /*
+    if (ctx->potentialType == EXTERNAL_POTENTIAL_DEFAULT)
+        pushPotential(luaSt, &ctx->pot);
+    else
+        lua_pushnil(luaSt);
+    */
+    
+    getTimeStepWrapup(luaSt);
+    pushNBodyCtx(luaSt, ctx);
+    
+    //TODO: check the function call here to pass through 1 parameter on CTX
+    if (lua_pcall(luaSt, 1, 1, 0))
+    {
+        mw_lua_perror(luaSt, "Error evaluating nbWrapup()");
+        return 1;
+    }
+    *ctx = *expectNBodyCtx(luaSt, lua_gettop(luaSt));
+    //free(temp);
+    lua_close(luaSt);
+  return 0;
 }
 
 int nbSetup(NBodyCtx* ctx, NBodyState* st, const NBodyFlags* nbf)

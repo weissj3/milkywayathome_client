@@ -18,6 +18,7 @@
  * along with Milkyway@Home.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "nbody.h"
 #include "nbody_plain.h"
 #include "nbody_shmem.h"
 #include "nbody_curses.h"
@@ -25,6 +26,7 @@
 #include "nbody_util.h"
 #include "nbody_checkpoint.h"
 #include "nbody_grav.h"
+#include "nbody_lua.h"
 
 #ifdef NBODY_BLENDER_OUTPUT
   #include "blender_visualizer.h"
@@ -136,7 +138,7 @@ NBodyStatus nbStepSystemPlain(const NBodyCtx* ctx, NBodyState* st)
     return rc;
 }
 
-NBodyStatus nbRunSystemPlain(const NBodyCtx* ctx, NBodyState* st)
+NBodyStatus nbRunSystemPlain(const NBodyCtx* ctx, NBodyState* st, NBodyFlags* nbf)
 {
     NBodyStatus rc = NBODY_SUCCESS;
 
@@ -175,6 +177,9 @@ NBodyStatus nbRunSystemPlain(const NBodyCtx* ctx, NBodyState* st)
            center of mass. */
         nbReportProgress(ctx, st);
         nbUpdateDisplayedBodies(ctx, st);
+	
+	//Added functionality for misc actions at end of each timestep:
+	nbWrapup(ctx, nbf);
     }
     
     #ifdef NBODY_BLENDER_OUTPUT
