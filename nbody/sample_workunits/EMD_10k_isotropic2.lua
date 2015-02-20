@@ -107,11 +107,9 @@ function makeHistogram()
    return HistogramParams.create()
 end
 
-function timeStepWrapup(ctx)
+function timeStepWrapup(ctx, st)
   --Clay's Function, just prints every time it is called. To be used later for additional functionality at the end of each timestep
-  print(ctx.nStep)
-  ctx.stepNumber = ctx.stepNumber + 1
-  return ctx
+  return ctx, st
   
 end
 
