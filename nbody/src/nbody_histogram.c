@@ -102,12 +102,13 @@ unsigned int nbCorrectTotalNumberInHistogram(const NBodyHistogram* histogram, /*
 }
 
 static void nbPrintHistogramHeader(FILE* f,
-                                   const NBodyCtx* ctx,
+                                   const NBodyCtx* ctx, 
+                                   const NBodyState* st,
                                    const HistogramParams* hp,
                                    int nbody)
 {
     char tBuf[256];
-    const Potential* p = &ctx->pot;
+    const Potential* p = &st->pot;
 
     mwLocalTimeFull(tBuf, sizeof(tBuf));
 
@@ -310,7 +311,7 @@ void nbWriteHistogram(const char* histoutFileName,
         }
     }
 
-    nbPrintHistogramHeader(f, ctx, &histogram->params, st->nbody);
+    nbPrintHistogramHeader(f, ctx, st, &histogram->params, st->nbody);
     nbPrintHistogram(f, histogram);
 
     if (f != DEFAULT_OUTPUT_FILE)
