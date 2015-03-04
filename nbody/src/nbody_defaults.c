@@ -44,7 +44,7 @@ const NBodyCtx defaultNBodyCtx =
     /* .nStep           */  0,
     /* .stepNumber      */  0,
 
-    /* .pot             */  EMPTY_POTENTIAL
+   // /* .pot             */  EMPTY_POTENTIAL
 };
 
 const HistogramParams defaultHistogramParams =
