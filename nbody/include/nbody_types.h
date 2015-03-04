@@ -288,8 +288,6 @@ typedef struct MW_ALIGN_TYPE
     size_t nOrbitTrace;         /* Number of items in orbitTrace */
     time_t lastCheckpoint;
 
-    Potential pot;          //Potential now in the state pointer.
-
     unsigned int step;
     int nbody;
     int effNBody;            /* Sometimes needed rounded up number of bodies. >= nbody are just padding */
@@ -321,7 +319,7 @@ typedef struct MW_ALIGN_TYPE
 
 #define NBODYSTATE_TYPE "NBodyState"
 
-#define EMPTY_NBODYSTATE { EMPTY_TREE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,0, 0, EMPTY_POTENTIAL, 0, 0, 0, 0, 0, 0, 0, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, NULL, NULL, NULL, NULL }
+#define EMPTY_NBODYSTATE { EMPTY_TREE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, NULL, NULL, NULL, NULL }
 
 
 typedef struct
@@ -397,7 +395,7 @@ typedef struct MW_ALIGN_TYPE
     unsigned int nStep;
     unsigned int stepNumber;  //Keeps track of what time step the simulation is on
 
-    //Potential pot;            //TODO: remove from CTX pointer. Add to State Pointer.
+    Potential pot;
 } NBodyCtx;
 
 #define NBODYCTX_TYPE "NBodyCtx"
@@ -469,7 +467,8 @@ typedef enum
 #define EMPTY_NBODYCTX { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,                  \
                          InvalidCriterion, EXTERNAL_POTENTIAL_DEFAULT,  \
                          FALSE, FALSE, FALSE,                           \
-                         0, 0}
+                         0, 0,                                          \
+                         EMPTY_POTENTIAL }
 
 typedef enum
 {
