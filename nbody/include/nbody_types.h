@@ -395,7 +395,7 @@ typedef struct MW_ALIGN_TYPE
 
     time_t checkpointT;       /* Period to checkpoint when not using BOINC */
     unsigned int nStep;
-
+    unsigned int stepNumber;  //Keeps track of what time step the simulation is on
 
     //Potential pot;            //TODO: remove from CTX pointer. Add to State Pointer.
 } NBodyCtx;

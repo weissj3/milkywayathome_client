@@ -37,8 +37,8 @@ function makeContext()
       eps2       = calculateEps2(totalBodies, r0),
       criterion  = "NewCriterion",
       useQuad    = true,
-      theta      = 1.0
-
+      theta      = 1.0,
+      stepNumber = 0
    }
 end
 
