@@ -454,7 +454,7 @@ void nbEvalPotentialClosure(NBodyState* st, mwvector pos, mwvector* aOut)
     lua_pop(luaSt, 3);
 }
 
-static int nbEvaluatePotential(lua_State* luaSt, NBodyCtx* ctx, NBodyState* st)
+static int nbEvaluatePotential(lua_State* luaSt, NBodyCtx* ctx)
 {
     int top;
 
@@ -470,7 +470,7 @@ static int nbEvaluatePotential(lua_State* luaSt, NBodyCtx* ctx, NBodyState* st)
     }
 
     top = lua_gettop(luaSt);
-    if (nbGetPotentialTyped(luaSt, ctx, st, top, "Invalid return from makePotential()"))
+    if (nbGetPotentialTyped(luaSt, ctx, top, "Invalid return from makePotential()"))
     {
         lua_pop(luaSt, 1);
         return 1;
@@ -554,7 +554,7 @@ int nbHistogramParamsCheck(const NBodyFlags* nbf, HistogramParams* hp)
     return (rc || method == NBODY_INVALID_METHOD);
 }
 
-static Body* nbEvaluateBodies(lua_State* luaSt, const NBodyCtx* ctx, const NBodyState* st, int* n)
+static Body* nbEvaluateBodies(lua_State* luaSt, const NBodyCtx* ctx, int* n)
 {
     int level, nResults;
 
@@ -567,7 +567,7 @@ static Body* nbEvaluateBodies(lua_State* luaSt, const NBodyCtx* ctx, const NBody
     pushNBodyCtx(luaSt, ctx);
 
     if (ctx->potentialType == EXTERNAL_POTENTIAL_DEFAULT)
-        pushPotential(luaSt, &st->pot);
+        pushPotential(luaSt, &ctx->pot);
     else
         lua_pushnil(luaSt);
 
@@ -590,10 +590,10 @@ static int nbEvaluateInitialNBodyState(lua_State* luaSt, NBodyCtx* ctx, NBodySta
     if (nbEvaluateContext(luaSt, ctx))
         return 1;
 
-    if (nbEvaluatePotential(luaSt, ctx, st))
+    if (nbEvaluatePotential(luaSt, ctx))
         return 1;
 
-    bodies = nbEvaluateBodies(luaSt, ctx, st, &nbody);
+    bodies = nbEvaluateBodies(luaSt, ctx, &nbody);
     
     if (!bodies)
         return 1;

@@ -26,9 +26,8 @@
 
 
 /* Try to read item at idx as one of the accepted potential types into ctx. */
-int nbGetPotentialTyped(lua_State* luaSt, NBodyCtx* ctx, NBodyState* st, int idx, const char* errMsg)
+int nbGetPotentialTyped(lua_State* luaSt, NBodyCtx* ctx, int idx, const char* errMsg)
 {
-    //TODO: Check if context should contain potential type or state.
     if (lua_isnoneornil(luaSt, idx))
     {
         ctx->potentialType = EXTERNAL_POTENTIAL_NONE;
@@ -58,9 +57,9 @@ int nbGetPotentialTyped(lua_State* luaSt, NBodyCtx* ctx, NBodyState* st, int idx
         }
 
         ctx->potentialType = EXTERNAL_POTENTIAL_DEFAULT;
-        st->pot = *tmp;
+        ctx->pot = *tmp;
 
-        return checkPotentialConstants(&st->pot);
+        return checkPotentialConstants(&ctx->pot);
     }
 }
 

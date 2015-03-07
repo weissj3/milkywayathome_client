@@ -173,18 +173,15 @@ static int eqNBodyCtx(lua_State* luaSt)
     return 1;
 }
 
-
-//TODO: Move this to the state?
 static int addPotential(lua_State* luaSt)
 {
     NBodyCtx* ctx;
-    NBodyState* st; //This seems like improper usage?
 
     if (lua_gettop(luaSt) != 2)
         return luaL_argerror(luaSt, 1, "Expected named 2 arguments");
 
     ctx = checkNBodyCtx(luaSt, 1);
-    st->pot = *checkPotential(luaSt, 2);
+    ctx->pot = *checkPotential(luaSt, 2);
 
     return 0;
 }
