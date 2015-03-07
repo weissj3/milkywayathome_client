@@ -442,14 +442,14 @@ char* showPotential(const Potential* p)
 char* showNBodyCtx(const NBodyCtx* ctx)
 {
     char* buf;
-    char* potBuf;
+    //char* potBuf;
 
     if (!ctx)
         return NULL;
 
-    potBuf = showPotential(&ctx->pot);
-    if (!potBuf)
-        return NULL;
+    // potBuf = showPotential(&st->pot);
+    //if (!potBuf)
+        //return NULL;
 
     if (0 > asprintf(&buf,
                      "ctx = {\n"
@@ -478,14 +478,14 @@ char* showNBodyCtx(const NBodyCtx* ctx)
                      showBool(ctx->allowIncest),
                      (int) ctx->checkpointT,
                      ctx->nStep,
-                     showExternalPotentialType(ctx->potentialType),
-                     potBuf
+                     showExternalPotentialType(ctx->potentialType)
+                     //potBuf
             ))
     {
         mw_fail("asprintf() failed\n");
     }
 
-    free(potBuf);
+    //free(potBuf);
 
     return buf;
 }
