@@ -109,7 +109,7 @@ end
 
 function timeStepWrapup(ctx, st)
   --Clay's Function, just prints every time it is called. To be used later for additional functionality at the end of each timestep
-  return ctx, st
+  return st
   
 end
 

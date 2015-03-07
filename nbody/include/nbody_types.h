@@ -396,7 +396,10 @@ typedef struct MW_ALIGN_TYPE
     time_t checkpointT;       /* Period to checkpoint when not using BOINC */
     unsigned int nStep;
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> parent of d10ae94... Continue moving potential to NbodyState
     //Potential pot;            //TODO: remove from CTX pointer. Add to State Pointer.
 } NBodyCtx;
 
