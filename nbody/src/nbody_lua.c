@@ -609,7 +609,7 @@ static int nbEvaluateInitialNBodyState(lua_State* luaSt, NBodyCtx* ctx, NBodySta
 //nbWrapup() is called at the end of the nbRunSystemPlain and adds
 //additional end-timestep LUA functionality
 /////////////////////////////////////////////////////////////////////
-int nbWrapup(NBodyCtx* ctx, const NBodyFlags* nbf)
+int nbWrapup(NBodyCtx* ctx, NBodyState* st, const NBodyFlags* nbf)
 {  
     lua_State* luaSt;
     int rc;

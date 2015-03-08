@@ -37,8 +37,7 @@ function makeContext()
       eps2       = calculateEps2(totalBodies, r0),
       criterion  = "NewCriterion",
       useQuad    = true,
-      theta      = 1.0,
-      stepNumber = 0
+      theta      = 1.0
    }
 end
 
@@ -107,12 +106,9 @@ function makeHistogram()
    return HistogramParams.create()
 end
 
-function timeStepWrapup(ctx)
-  --Clay's Function, just prints every time it is called. To be used later for additional functionality at the end of each timestep
-  print(ctx.nStep)
-  ctx.stepNumber = ctx.stepNumber + 1
-  return ctx
-  
+function timeStepWrapup(st)
+  --Clay's Function, just prints every time it is called. To be used later for additional functionality at the end of each timestep  
+    return st
 end
 
 
