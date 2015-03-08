@@ -33,7 +33,7 @@ void nbEvalPotentialClosure(NBodyState* st, mwvector pos, mwvector* aOut);
 int nbEvaluateHistogramParams(lua_State* luaSt, HistogramParams* hp);
 NBodyLikelihoodMethod nbEvaluateLikelihoodMethod(lua_State* luaSt);
 int nbHistogramParamsCheck(const NBodyFlags* nbf, HistogramParams* hp);
-int nbWrapup(NBodyCtx* ctx, NBodyState* st, const NBodyFlags* nbf);
+int nbWrapup(NBodyCtx* ctx, const NBodyFlags* nbf);
 
 lua_State* nbLuaOpen(mwbool debug);
 lua_State* nbOpenLuaStateWithScript(const NBodyFlags* nbf, NBodyState* st);

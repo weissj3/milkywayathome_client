@@ -179,7 +179,7 @@ NBodyStatus nbRunSystemPlain(const NBodyCtx* ctx, NBodyState* st, NBodyFlags* nb
         nbUpdateDisplayedBodies(ctx, st);
 	
 	//Added functionality for misc actions at end of each timestep:
-	nbWrapup(ctx, st, nbf);
+	nbWrapup(ctx, nbf);
     }
     
     #ifdef NBODY_BLENDER_OUTPUT

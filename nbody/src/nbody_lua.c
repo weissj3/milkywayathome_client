@@ -609,7 +609,7 @@ static int nbEvaluateInitialNBodyState(lua_State* luaSt, NBodyCtx* ctx, NBodySta
 //nbWrapup() is called at the end of the nbRunSystemPlain and adds
 //additional end-timestep LUA functionality
 /////////////////////////////////////////////////////////////////////
-int nbWrapup(NBodyCtx* ctx, NBodyState* st, const NBodyFlags* nbf)
+int nbWrapup(NBodyCtx* ctx, const NBodyFlags* nbf)
 {  
     lua_State* luaSt;
     int rc;
@@ -629,7 +629,6 @@ int nbWrapup(NBodyCtx* ctx, NBodyState* st, const NBodyFlags* nbf)
     
     getTimeStepWrapup(luaSt);
     pushNBodyCtx(luaSt, ctx);
-    //pushNBodyState(luaSt, st);
     
     //TODO: check the function call here to pass through 1 parameter on CTX
     if (lua_pcall(luaSt, 1, 1, 0))
@@ -638,7 +637,6 @@ int nbWrapup(NBodyCtx* ctx, NBodyState* st, const NBodyFlags* nbf)
         return 1;
     }
     *ctx = *expectNBodyCtx(luaSt, lua_gettop(luaSt));
-    *st = *expectNBodyState(luaSt, lua_gettop(luaSt));
     //free(temp);
     lua_close(luaSt);
   return 0;
