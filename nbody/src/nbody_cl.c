@@ -542,7 +542,7 @@ static char* nbGetCompileFlags(const NBodyCtx* ctx, const NBodyState* st, const 
 {
     char* buf;
     const NBodyWorkSizes* ws = st->workSizes;
-    const Potential* p = &st->pot;
+    const Potential* p = &ctx->pot;
 
     if (asprintf(&buf,
                  "-DDEBUG=%d "
