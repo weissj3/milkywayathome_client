@@ -38,23 +38,40 @@ static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real f
 	{
 		exit(-1);
 	}
+	unsigned int i = 0;
+	int numSteps = 20;
+	real * values = mwCalloc(sizeof(real) * 20);
+	for(i = 0; i < numSteps; i++)
+	{
+		values[i] = (*rootFunc)(((upperBound - lowBound) * (real)i)/(real)numSteps + lowBound, rootFuncParams) - funcValue;
+	}
 	real root = 1;
 	real midPoint = 0;
 	real midVal = 0;
 	unsigned int nsteps = 0;
-	while(midVal > .00001 || nsteps >= 1000)
+	real curUpper = 0;
+	real curLower = 0;
+	for(i = 0; i < numSteps-1; i++)
 	{
-		midPoint = (lowBound + upperBound)/2.0
-		midVal = (*rootFunc)(midPoint, rootFuncParams) - funcValue;
-		if(midVal < 0.0)
+		if((values[i] > 0 && values[i+1] < 0) || (values[i] < 0 && values[i+1] > 0))
 		{
-			lowBound = midPoint;
+			curLower = ((upperBound - lowBound) * (real)i)/(real)numSteps + lowBound;
+			curUpper = ((upperBound - lowBound) * (real)(i + 1))/(real)numSteps + lowBound;
+			while(midVal > .00001 || nsteps >= 1000)
+			{
+				midPoint = (curLower + curUpper)/2.0;
+				midVal = (*rootFunc)(midPoint, rootFuncParams) - funcValue;
+				if(midVal < 0.0)
+				{
+					curLower = midPoint;
+				}
+				else
+				{
+					curUpper = midPoint;
+				}
+				++nsteps;
+			}
 		}
-		else
-		{
-			upperBound = midPoint;
-		}
-		++nsteps;
 	}
 	return midPoint;
 }
@@ -549,7 +566,7 @@ static int nbGenerateIsotropicCore(lua_State* luaSt,
 	  pushBody(luaSt, &b);
 	  lua_rawseti(luaSt, table, i + 1);
       }
-      
+      mwFree(args);
     return 1;
 
 }
