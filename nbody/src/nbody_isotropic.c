@@ -51,6 +51,8 @@ static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real f
 	unsigned int nsteps = 0;
 	real curUpper = 0;
 	real curLower = 0;
+	int rootsFound = 0;
+	real * roots =  mwCalloc(sizeof(real) * 20);
 	for(i = 0; i < numSteps-1; i++)
 	{
 		if((values[i] > 0 && values[i+1] < 0) || (values[i] < 0 && values[i+1] > 0))
@@ -71,8 +73,14 @@ static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real f
 				}
 				++nsteps;
 			}
+			roots[rootsFound] = midPoint;
+			++rootsFound;
 		}
 	}
+	//Lets assume each root is an equally probable answer so we pick one at random
+	midPoint = roots[(int)(real)mwXrandom(dsfmtState,0.0,(real)rootsFound-1.0)];
+	mwFree(values);
+	mwFree(roots);
 	return midPoint;
 }
 /*Be Careful! this function returns the negative of the potential! this is the value of interest, psi*/
@@ -84,8 +92,22 @@ static inline real potential( real r, real mass1, real mass2, real scaleRad1, re
 }
 
 /*this is the density distribution function. Returns the density at a given radius.*/
-//static inline real density( real r, real mass1, real mass2, real scaleRad1, real scaleRad2)
-static inline real density( real r, real * args)
+static inline real density( real r, real mass1, real mass2, real scaleRad1, real scaleRad2)
+{
+  if(arguments == NULL)
+  {
+  	exit(-1);
+  }
+  real scaleRad1Cube = cube(scaleRad1); 
+  real scaleRad2Cube = cube(scaleRad2);
+  /*this weird sqrt(fifth(x) notation is used because it was determined that pow() ate up a lot of comp time*/
+  real density_result= (3.0/(4.0*(M_PI)))*( (mass1/scaleRad1Cube) * (1.0/mw_sqrt( fifth(1.0 + sqr(r)/sqr(scaleRad1) ) ) )
+						  + (mass2/scaleRad2Cube) *(1.0/mw_sqrt( fifth(1.0 + sqr(r)/sqr(scaleRad2) ) ) ) );
+  
+  return density_result;
+}
+
+static inline real density_prob( real r, real * args)
 {
   real mass1 = args[0];
   real mass2 = args[1];
@@ -104,6 +126,7 @@ static inline real density( real r, real * args)
   return r * r * density_result;
 }
 
+
 /*BE CAREFUL! this function returns the mass enclosed in a single plummer sphere!*/
 static inline real mass_en( real r, real mass, real scaleRad)
 {
@@ -113,7 +136,7 @@ static inline real mass_en( real r, real mass, real scaleRad)
 }
 
 
-static inline real fun(real ri, real * args, real energy)
+static inline real fun(real ri, real mass1, real mass2, real scaleRad1, real scaleRad2, real energy)
 {
  real first_deriv_psi;
  real second_deriv_psi;
@@ -387,33 +410,28 @@ static inline real distmax_finder( real a, real b, real c, real r, real scaleRad
     }
 }
 
-static inline real r_mag(dsfmt_t* dsfmtState, real* args, real rho_max)
+static inline real r_mag(dsfmt_t* dsfmtState, real mass1, real mass2, real scaleRad1, real scaleRad2, real rho_max)
 {
 
   mwbool GOOD_RADIUS = 0;
 
   real r;
-  real u, val;
-
-  while (GOOD_RADIUS != 1)
-    {
-      
-      //r = (real)mwXrandom(dsfmtState,0.0, 5.0 * (scaleRad1 + scaleRad2));
-      u = (real)mwXrandom(dsfmtState,0.0,1.0);
-      
-      val = r*r * density(r,  mass1,  mass2,  scaleRad1,  scaleRad2);
+  real u;
   
-      if (val/rho_max > u)
-      {
-       	GOOD_RADIUS = 1;
-      }
-    }
+  u = (real)mwXrandom(dsfmtState,0.0,1.0);
+  real* args = mwCalloc(sizeof(real) * 4);
+  args[0] = mass1;
+  args[1] = mass2;
+  args[2] = scale1;
+  args[3] = scale2;
+  r = findRoot(density_prob, args, u, 0.0, 5.0 * (scaleRad1 + scaleRad2));
+  mwFree(args);
   return r;
 }
 
 
 
-static inline real vel_mag(dsfmt_t* dsfmtState,real r, real* args)
+static inline real vel_mag(dsfmt_t* dsfmtState,real r, real mass1, real mass2, real scaleRad1, real scaleRad2)
 {
   
   /*
@@ -437,11 +455,6 @@ static inline real vel_mag(dsfmt_t* dsfmtState,real r, real* args)
   
   real val,v,u,d;
   real energy;
-  
-  real mass1     = args[0];
-  real mass2     = args[1];
-  real scaleRad1 = args[2];
-  real scaleRad2 = args[3];
   
   real v_esc= mw_sqrt( mw_fabs(2.0* (mass1+mass2)/r));
   real dist_max=distmax_finder( 0.0, .5*v_esc, v_esc, r, scaleRad1,  scaleRad2, mass1, mass2);
@@ -521,12 +534,7 @@ static int nbGenerateIsotropicCore(lua_State* luaSt,
     
     b.bodynode.type = BODY(ignore);    /* Same for all in the model */
     lua_createtable(luaSt, nbody, 0);
-    table = lua_gettop(luaSt);	
-    real* args = mwCalloc(sizeof(real) * 4);
-    args[0] = mass1;
-    args[1] = mass2;
-    args[2] = scale1;
-    args[3] = scale2;
+    table = lua_gettop(luaSt);
       for (i = 0; i < nbody; i++)
       {
 // 	 mw_printf(" \r initalizing particle %i. ",i);
@@ -566,7 +574,7 @@ static int nbGenerateIsotropicCore(lua_State* luaSt,
 	  pushBody(luaSt, &b);
 	  lua_rawseti(luaSt, table, i + 1);
       }
-      mwFree(args);
+      
     return 1;
 
 }
