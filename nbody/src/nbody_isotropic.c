@@ -38,7 +38,7 @@ static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real f
 	{
 		exit(-1);
 	}
-	unsigned int i = 0;
+  unsigned int i = 0;
 	unsigned int numSteps = 20;
 	real * values = mwCalloc(20, sizeof(real));
 	for(i = 0; i < numSteps; i++)
@@ -56,9 +56,18 @@ static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real f
 	{
 		if((values[i] > 0 && values[i+1] < 0) || (values[i] < 0 && values[i+1] > 0))
 		{
-			curLower = ((upperBound - lowBound) * (real)i)/(real)numSteps + lowBound;
-			curUpper = ((upperBound - lowBound) * (real)(i + 1))/(real)numSteps + lowBound;
-			while(midVal > .00001 || nsteps >= 1000)
+      if(values[i] < 0)
+      {
+  			curLower = ((upperBound - lowBound) * (real)i)/(real)numSteps + lowBound;
+  			curUpper = ((upperBound - lowBound) * (real)(i + 1))/(real)numSteps + lowBound;
+      }
+      else
+      {
+        curLower = ((upperBound - lowBound) * (real)(i + 1))/(real)numSteps + lowBound;
+        curUpper = ((upperBound - lowBound) * (real)i)/(real)numSteps + lowBound;
+      }
+      midVal = 1;
+			while(midVal > .0001 || nsteps >= 1000)
 			{
 				midPoint = (curLower + curUpper)/2.0;
 				midVal = (*rootFunc)(midPoint, rootFuncParams) - funcValue;
@@ -412,13 +421,14 @@ static inline real r_mag(dsfmt_t* dsfmtState, real mass1, real mass2, real scale
   real r;
   real u;
   
-  u = (real)mwXrandom(dsfmtState,0.0,1.0);
+  u = (real)mwXrandom(dsfmtState,0.0,1.0) * rho_max;
   real* args = mwCalloc(4, sizeof(real));
   args[0] = mass1;
   args[1] = mass2;
   args[2] = scaleRad1;
   args[3] = scaleRad2;
   r = findRoot(density_prob, args, u, 0.0, 5.0 * (scaleRad1 + scaleRad2), dsfmtState);
+  printf("%4f\n", r);
   free(args);
   return r;
 }
