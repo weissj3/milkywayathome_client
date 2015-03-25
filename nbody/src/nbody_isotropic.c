@@ -31,7 +31,7 @@ their copyright to their programs which execute similar algorithms.
 #include "nbody_lua_types.h"
 #include "nbody_isotropic.h"
 
-static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real funcValue, real lowBound, real upperBound)
+static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real funcValue, real lowBound, real upperBound, dsfmt_t* dsfmtState)
 {
 	//requires lowBound and upperBound to evaluate to opposite sign when rootFunc-funcValue
 	if(rootFuncParams == NULL || rootFunc == NULL)
@@ -39,20 +39,19 @@ static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real f
 		exit(-1);
 	}
 	unsigned int i = 0;
-	int numSteps = 20;
-	real * values = mwCalloc(sizeof(real) * 20);
+	unsigned int numSteps = 20;
+	real * values = mwCalloc(20, sizeof(real));
 	for(i = 0; i < numSteps; i++)
 	{
 		values[i] = (*rootFunc)(((upperBound - lowBound) * (real)i)/(real)numSteps + lowBound, rootFuncParams) - funcValue;
 	}
-	real root = 1;
 	real midPoint = 0;
 	real midVal = 0;
 	unsigned int nsteps = 0;
 	real curUpper = 0;
 	real curLower = 0;
 	int rootsFound = 0;
-	real * roots =  mwCalloc(sizeof(real) * 20);
+	real * roots =  mwCalloc(20, sizeof(real));
 	for(i = 0; i < numSteps-1; i++)
 	{
 		if((values[i] > 0 && values[i+1] < 0) || (values[i] < 0 && values[i+1] > 0))
@@ -78,9 +77,9 @@ static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real f
 		}
 	}
 	//Lets assume each root is an equally probable answer so we pick one at random
-	midPoint = roots[(int)(real)mwXrandom(dsfmtState,0.0,(real)rootsFound-1.0)];
-	mwFree(values);
-	mwFree(roots);
+	midPoint = roots[(int)(mwXrandom(dsfmtState,0.0,.999999)*(real)rootsFound)];
+	free(values);
+	free(roots);
 	return midPoint;
 }
 /*Be Careful! this function returns the negative of the potential! this is the value of interest, psi*/
@@ -94,10 +93,6 @@ static inline real potential( real r, real mass1, real mass2, real scaleRad1, re
 /*this is the density distribution function. Returns the density at a given radius.*/
 static inline real density( real r, real mass1, real mass2, real scaleRad1, real scaleRad2)
 {
-  if(arguments == NULL)
-  {
-  	exit(-1);
-  }
   real scaleRad1Cube = cube(scaleRad1); 
   real scaleRad2Cube = cube(scaleRad2);
   /*this weird sqrt(fifth(x) notation is used because it was determined that pow() ate up a lot of comp time*/
@@ -109,14 +104,15 @@ static inline real density( real r, real mass1, real mass2, real scaleRad1, real
 
 static inline real density_prob( real r, real * args)
 {
+  if(args == NULL)
+  {
+    exit(-1);
+  }
   real mass1 = args[0];
   real mass2 = args[1];
   real scaleRad1 = args[2];
   real scaleRad2 = args[3];
-  if(arguments == NULL)
-  {
-  	exit(-1);
-  }
+
   real scaleRad1Cube = cube(scaleRad1); 
   real scaleRad2Cube = cube(scaleRad2);
   /*this weird sqrt(fifth(x) notation is used because it was determined that pow() ate up a lot of comp time*/
@@ -413,19 +409,17 @@ static inline real distmax_finder( real a, real b, real c, real r, real scaleRad
 static inline real r_mag(dsfmt_t* dsfmtState, real mass1, real mass2, real scaleRad1, real scaleRad2, real rho_max)
 {
 
-  mwbool GOOD_RADIUS = 0;
-
   real r;
   real u;
   
   u = (real)mwXrandom(dsfmtState,0.0,1.0);
-  real* args = mwCalloc(sizeof(real) * 4);
+  real* args = mwCalloc(4, sizeof(real));
   args[0] = mass1;
   args[1] = mass2;
-  args[2] = scale1;
-  args[3] = scale2;
-  r = findRoot(density_prob, args, u, 0.0, 5.0 * (scaleRad1 + scaleRad2));
-  mwFree(args);
+  args[2] = scaleRad1;
+  args[3] = scaleRad2;
+  r = findRoot(density_prob, args, u, 0.0, 5.0 * (scaleRad1 + scaleRad2), dsfmtState);
+  free(args);
   return r;
 }
 
@@ -540,7 +534,7 @@ static int nbGenerateIsotropicCore(lua_State* luaSt,
 // 	 mw_printf(" \r initalizing particle %i. ",i);
 	  do
 	  {
-	    r= r_mag(prng, args, rho_max);
+	    r= r_mag(prng, mass1, mass2, radiusScale1, radiusScale2, rho_max);
 	    /*to ensure that r is finite and nonzero*/
 	    if(isinf(r)==FALSE && r!=0.0){break;}
 	  }
@@ -566,7 +560,7 @@ static int nbGenerateIsotropicCore(lua_State* luaSt,
 	  mass_en1= mass_en(r, mass1, radiusScale1);
 	  mass_en2= mass_en(r, mass2, radiusScale2);
 	  
-	  v= vel_mag(prng, r, args);
+	  v= vel_mag(prng, r, mass1, mass2, radiusScale1, radiusScale2);
 	  
 	  b.bodynode.pos = r_vec(prng, rShift, r);
 	  b.vel = vel_vec(prng,  vShift,v);
