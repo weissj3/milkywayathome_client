@@ -31,6 +31,7 @@ their copyright to their programs which execute similar algorithms.
 #include "nbody_lua_types.h"
 #include "nbody_isotropic.h"
 
+/* A root finding function used to invert probability functions allows for direct calculation of positions instead of sampling */
 static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real funcValue, real lowBound, real upperBound, dsfmt_t* dsfmtState)
 {
 	//requires lowBound and upperBound to evaluate to opposite sign when rootFunc-funcValue
@@ -39,8 +40,10 @@ static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real f
 		exit(-1);
 	}
   unsigned int i = 0;
+  /* Can find up to 20 roots, but may miss a root if they are too close together */
 	unsigned int numSteps = 20;
 	real * values = mwCalloc(20, sizeof(real));
+  /* Divide the function area up into bins in case there is more than one root */
 	for(i = 0; i < numSteps; i++)
 	{
 		values[i] = (*rootFunc)(((upperBound - lowBound) * (real)i)/(real)numSteps + lowBound, rootFuncParams) - funcValue;
@@ -52,6 +55,7 @@ static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real f
 	real curLower = 0;
 	int rootsFound = 0;
 	real * roots =  mwCalloc(20, sizeof(real));
+  /* Find the roots using bisection because it was easy to code and good enough for our purposes */
 	for(i = 0; i < numSteps-1; i++)
 	{
 		if((values[i] > 0 && values[i+1] < 0) || (values[i] < 0 && values[i+1] > 0))
@@ -85,7 +89,8 @@ static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real f
 			++rootsFound;
 		}
 	}
-	//Lets assume each root is an equally probable answer so we pick one at random
+	/* Lets assume each root is an equally probable answer so we pick one at random  *
+   * Don't want to include 1.0 in our random set otherwise we may go out of bounds */
 	midPoint = roots[(int)(mwXrandom(dsfmtState,0.0,.999999)*(real)rootsFound)];
 	free(values);
 	free(roots);
@@ -261,6 +266,29 @@ static inline real dist_fun(real r, real mass1, real mass2, real scaleRad1, real
   return distribution_function;
 }
 
+ /*This returns the value of the distribution function for a given energy*/
+static inline real prob_dist_fun(real energy, real * args) /* mass1, real mass2, real scaleRad1, real scaleRad2, real energy) */
+{
+  if(args == NULL)
+  {
+    exit(-1);
+  }
+  real mass1 = args[0];
+  real mass2 = args[1];
+  real scaleRad1 = args[2];
+  real scaleRad2 = args[3];
+  real r = args[4];
+
+  real c= 1.0/(mw_sqrt(8)* sqr(M_PI));
+  real distribution_function;
+  /*This calls guassian quad to integrate the function for a given energy*/
+  distribution_function=c*gauss_quad(energy, mass1, mass2, scaleRad1, scaleRad2);
+  
+  real v = mw_sqrt(2 * (energy - potential( r, mass1, mass2, scaleRad1, scaleRad2)));
+
+  return distribution_function * v * v;
+}
+
 /* assigns angles. Allows for non-circular orbits.*/
 static inline mwvector angles(dsfmt_t* dsfmtState, real rad)
 {
@@ -428,7 +456,6 @@ static inline real r_mag(dsfmt_t* dsfmtState, real mass1, real mass2, real scale
   args[2] = scaleRad1;
   args[3] = scaleRad2;
   r = findRoot(density_prob, args, u, 0.0, 5.0 * (scaleRad1 + scaleRad2), dsfmtState);
-  printf("%4f\n", r);
   free(args);
   return r;
 }
@@ -448,38 +475,29 @@ static inline real vel_mag(dsfmt_t* dsfmtState,real r, real mass1, real mass2, r
    * 
    */
   
-  
-      
-//   real GMsolar =222288.47; //convert from simulation to solar masses
-//   scaleRad1 *= 1000; //pc
-//   scaleRad2 *= 1000;  
-//   r *= 1000;
-//   mass1 *=GMsolar;
-//   mass2 *=GMsolar;
-  
-  real val,v,u,d;
+  real vel,u;
   real energy;
-  
+  /* Package Args for root finder */
+  real * args = mwCalloc(5, sizeof(real));
+  args[0] = mass1;
+  args[1] = mass2;
+  args[2] = scaleRad1;
+  args[3] = scaleRad2;
+  args[4] = r;
+
   real v_esc= mw_sqrt( mw_fabs(2.0* (mass1+mass2)/r));
   real dist_max=distmax_finder( 0.0, .5*v_esc, v_esc, r, scaleRad1,  scaleRad2, mass1, mass2);
-    while (1)
-    {
-      v = (real)mwXrandom(dsfmtState,0.0, v_esc);
-      u = (real)mwXrandom(dsfmtState,0.0,1.0);
-      
-      energy= potential( r, mass1, mass2, scaleRad1, scaleRad2)-0.5*v*v;
-      
-      d=dist_fun( r,  mass1,  mass2,  scaleRad1,  scaleRad2, energy);
-      val =v*v* d;
-      if (mw_fabs( val/dist_max) > u)
-      {
-       	break;
-      }
-    }
+  /* Random prob_dist_fun value */
+  u = (real)mwXrandom(dsfmtState,0.0,dist_max*v_esc*v_esc);
   
+  /* Please make sure these bounds make sense, I don't know if they do. */
+  energy = findRoot(prob_dist_fun, args, u, 0.0, potential( r, mass1, mass2, scaleRad1, scaleRad2)-0.5*v_esc*v_esc,dsfmtState);
+  /* Only need the positive velocity I think */
+  vel = mw_sqrt(2 * (energy - potential( r, mass1, mass2, scaleRad1, scaleRad2)));
+
   
-  v*=0.977813107;//changing from kpc/gy to km/s
-  return v; //km/s
+  vel *= 0.977813107;//changing from kpc/gy to km/s
+  return vel; //km/s
 }
 
 
