@@ -39,11 +39,11 @@ static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real f
 	{
 		exit(-1);
 	}
-  unsigned int i = 0;
-  /* Can find up to 20 roots, but may miss a root if they are too close together */
+    unsigned int i = 0;
+    /* Can find up to 20 roots, but may miss a root if they are too close together */
 	unsigned int numSteps = 20;
 	real * values = mwCalloc(20, sizeof(real));
-  /* Divide the function area up into bins in case there is more than one root */
+    /* Divide the function area up into bins in case there is more than one root */
 	for(i = 0; i < numSteps; i++)
 	{
 		values[i] = (*rootFunc)(((upperBound - lowBound) * (real)i)/(real)numSteps + lowBound, rootFuncParams) - funcValue;
@@ -55,42 +55,43 @@ static real findRoot(real (*rootFunc)(real, real*), real* rootFuncParams, real f
 	real curLower = 0;
 	int rootsFound = 0;
 	real * roots =  mwCalloc(20, sizeof(real));
-  /* Find the roots using bisection because it was easy to code and good enough for our purposes */
+    /* Find the roots using bisection because it was easy to code and good enough for our purposes */
 	for(i = 0; i < numSteps-1; i++)
 	{
 		if((values[i] > 0 && values[i+1] < 0) || (values[i] < 0 && values[i+1] > 0))
 		{
-      if(values[i] < 0)
-      {
+        if(values[i] < 0)
+        {
   			curLower = ((upperBound - lowBound) * (real)i)/(real)numSteps + lowBound;
   			curUpper = ((upperBound - lowBound) * (real)(i + 1))/(real)numSteps + lowBound;
-      }
-      else
-      {
-        curLower = ((upperBound - lowBound) * (real)(i + 1))/(real)numSteps + lowBound;
-        curUpper = ((upperBound - lowBound) * (real)i)/(real)numSteps + lowBound;
-      }
-      midVal = 1;
-			while(midVal > .0001 || nsteps >= 1000)
+        }
+        else
+        {
+            curLower = ((upperBound - lowBound) * (real)(i + 1))/(real)numSteps + lowBound;
+            curUpper = ((upperBound - lowBound) * (real)i)/(real)numSteps + lowBound;
+        }
+        midVal = 1;
+        int nsteps = 0;
+		while(midVal > .0001 || nsteps >= 1000)
+		{
+			midPoint = (curLower + curUpper)/2.0;
+			midVal = (*rootFunc)(midPoint, rootFuncParams) - funcValue;
+			if(midVal < 0.0)
 			{
-				midPoint = (curLower + curUpper)/2.0;
-				midVal = (*rootFunc)(midPoint, rootFuncParams) - funcValue;
-				if(midVal < 0.0)
-				{
-					curLower = midPoint;
-				}
-				else
-				{
-					curUpper = midPoint;
-				}
-				++nsteps;
+				curLower = midPoint;
 			}
-			roots[rootsFound] = midPoint;
-			++rootsFound;
+			else
+			{
+				curUpper = midPoint;
+			}
+			++nsteps;
+		}
+		roots[rootsFound] = midPoint;
+		++rootsFound;
 		}
 	}
 	/* Lets assume each root is an equally probable answer so we pick one at random  *
-   * Don't want to include 1.0 in our random set otherwise we may go out of bounds */
+    * Don't want to include 1.0 in our random set otherwise we may go out of bounds */
 	midPoint = roots[(int)(mwXrandom(dsfmtState,0.0,.999999)*(real)rootsFound)];
 	free(values);
 	free(roots);
