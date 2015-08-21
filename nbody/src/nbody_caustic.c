@@ -25,7 +25,12 @@ const double G = 1.0;
 const double a_n[] = {1.0,40.1,20.1,13.6,10.4,8.4,7.0,6.1,5.3,4.8,4.3,4.0,3.7,3.4,3.2,3.0,2.8,2.7,2.5,2.4,2.3};
 const double V_n[] = {1.0,517,523,523,523,522,521,521,520,517,515,512,510,507,505,503,501,499,497,496,494};
 const double rate_n[] = {1.0,53,23,14,10,7.8,6.3,5.3,4.5,3.9,3.4,3.1,2.8,2.5,2.3,2.1,2.0,1.8,1.7,1.6,1.5};
-const double p_n[] = {1.0,0.3,0.3,1.0,0.3,0.15,0.12,0.6,0.23,0.41,0.25,0.19,0.17,0.11,0.09,0.09,0.09,0.09,0.09,0.09,0.09};
+const double p_n[] = {1.0,2.005,1.005,1.0,0.52,0.15,0.12,0.6,0.23,0.41,0.25,0.19,0.17,0.11,0.09,0.15,0.14,0.135,0.125,0.12,0.115};
+
+/* simulation unit conversions, simulation units are kpc, Gyr, Msim=222288.47*Msun */
+const double rate_conv = 4498.6589; 
+const double v_conv= 1.0226831;
+const double mass_conv= 222288.47;
 
 #define ONE_THIRD ((double)1.0/(double)3.0)
 #define c1 (double complex) 1.0
@@ -48,7 +53,7 @@ static void gfield_far(double rho, double z, int n, double *rfield, double *zfie
 
     double shift = a_n[n]+p_n[n]/4.0;
 
-    double A_n = (8.0*M_PI*G*rate_n[n]*4498.6589)/(V_n[n]*1.0226831);  //convert from M_sun/yr*sr to m_sim/gyr*sr with 4498 and km/s to kpc/gyr with 1.0226
+    double A_n = (8.0*M_PI*G*rate_n[n]*rate_conv)/(V_n[n]*v_conv);  //convert from M_sun/yr*sr to m_sim/gyr*sr with 4498 and km/s to kpc/gyr with 1.0226
 
     /* caustic radius shifted by 0.25 so that g goes to zero beyond a_n[n] */
     double s = hypot(r_squared-(shift)*(shift),2.0*(shift)*z);
@@ -224,7 +229,7 @@ static void gfield_close(double rho, double z, int n, double *rfield, double *zf
     /* roots stored in re[] and re2[] */
 
 
-    double factor = -8.0*M_PI*G*rate_n[n]*4498.6589/(rho*V_n[n]*1.0226831);
+    double factor = -8.0*M_PI*G*rate_n[n]*rate_conv/(rho*V_n[n]*v_conv);
 
     if(count==2)
     {
@@ -266,16 +271,20 @@ mwvector causticHaloAccel(const Halo* h, mwvector pos, real r)
 
     rho = mw_sqrt(sqr(X(pos))+sqr(Y(pos)));
 
+    /* The gravitational acceleration at a position (rho, z) is a sum from the contributions of the first 20 caustic rings */
+    
     for (n = 1; n <= 20; n++)
     {
 
-        /* tricusp */
+        /* tricusp boundary conditions: tr is the top right (positive Z(pos)) boundary of the tricusp; tl is the top left (positive Z(pos)) boundary of the tricusp */
+
+        /* tr and tl represent Z as a function of rho (Galactocentric cylindrical coordinates)  */
         R=(3.0-mw_sqrt(1.0+(8.0/p_n[n])*(rho-a_n[n])))/4.0;
         l=(3.0+mw_sqrt(1.0+(8.0/p_n[n])*(rho-a_n[n])))/4.0;
         tr=2.0*p_n[n]*mw_sqrt(cube(R)*(1.0-R));
         tl=2.0*p_n[n]*mw_sqrt(cube(l)*(1.0-l));
 
-
+        /* tricusp boundary conditions: if the position (rho, z) is inside the caustic, use gfield_close(); if the position (rho, z) is outside the caustic, use gfield_far() */
         if( (Z(pos)<=tr && Z(pos)>=0.0 && rho>=a_n[n] && rho<=a_n[n]+p_n[n]) || (Z(pos)>=tl && Z(pos)<=tr && rho>=(a_n[n]-p_n[n]/8.0) && rho<=a_n[n]) || (Z(pos)>=-tr && Z(pos)<=0.0 && rho>=a_n[n] && rho<=a_n[n]+p_n[n]) || (Z(pos)<=-tl && Z(pos)>=-tr && rho>=(a_n[n]-p_n[n]/8.0) && rho<=a_n[n]) )  //close
         {
             gfield_close(rho,Z(pos),n,&rfield,&zfield);
